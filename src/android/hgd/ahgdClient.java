@@ -25,6 +25,8 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.util.Log;
 
+import android.hgd.ahgdConstants;
+
 import jhgdc.library.HGDClient;
 import jhgdc.library.HGDConsts;
 import jhgdc.library.JHGDException;
@@ -45,7 +47,7 @@ import jhgdc.library.JHGDException;
  * ./hgd-netd &
  * ./hgd-playd &
  * 
- * @author gairne
+ * @author Matthew Mole
  */
 public class ahgdClient extends Activity {
     /** Called when the activity is first created. */
@@ -88,5 +90,67 @@ public class ahgdClient extends Activity {
         }
         
         Log.i("ahgdc", "Example stopped");
+    }
+    
+    /**
+     * Vote off the current song
+     * 
+     * @author Matthew Mole
+     */
+    public boolean vote() {
+    	try {
+    		String response = jc.requestNowPlaying();
+    		
+    		if (response.split("|")[1].equals("0")) {
+        		//Song not playing
+    			return ahgdConstants.AHGD_FAIL;
+        	}
+        	else {
+        		//Catch all possible errors that can occur here.
+        		vote(Integer.parseInt(response.split("|")[2]));
+        		return ahgdConstants.AHGD_SUCCESS;
+        	}
+    	}
+    	catch (JHGDException e) {
+    		//Log command failure
+    		return ahgdConstants.AHGD_FAIL;
+    	}
+    	catch (IOException e) {
+    		//Log
+    		return ahgdConstants.AHGD_FAIL;
+    	}
+    	catch (IllegalStateException e) {
+    		//client not connected
+    		return ahgdConstants.AHGD_FAIL;
+    	}
+    }
+    
+    /**
+     * Vote off the song that corresponds to the trackId
+     * 
+     * @author Matthew Mole
+     */
+    public void vote(int trackId) {
+    	try {
+    		jc.requestVoteOff();
+    	}
+    	catch (JHGDException e) {
+    		
+    	}
+    	catch (IOException e) {
+    		
+    	}
+    }
+    
+    public void enqueue() {
+    
+    }
+    
+    public void getPlaylist() {
+    	
+    }
+    
+    public void log(String tag, String message) {
+    	Log.i(tag, message);
     }
 }
