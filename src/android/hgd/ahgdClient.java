@@ -128,6 +128,12 @@ public class ahgdClient extends Activity {
         Log.i("ahgdc", "Example stopped");
     }
     
+    public void log(String tag, String message) {
+    	Log.i(tag, message);
+    }
+    
+    // THE FOLLOWING METHODS LIAISE WITH libjhgdc:HGDClient IN ORDER TO PROVIDE HGDC FUNCTIONALITY
+    
     /**
      * Vote off the current song
      * 
@@ -135,18 +141,40 @@ public class ahgdClient extends Activity {
      */
     public boolean vote() {
     	try {
-    		PlaylistItem response = PlaylistItem.getPlaylistItem(jc.requestNowPlaying());
-    		
-    		if (response == null) {
-        		//Failed to get current playing
+    		PlaylistItem response = PlaylistItem.getPlaylistItem(jc.requestNowPlaying()); 		
+    		if (!response.isEmpty()) {
+    			vote(response.getId());
+    			return true;
+    		}
+    		else {
     			return false;
-        	}
-        	if (response.getIntegerId() == -1) {
-        		//fail at invalid integer
-        		return false;
-        	}
-    		
-    		vote(response.getIntegerId());
+    		}
+    	}
+    	catch (JHGDException e) {
+    		//Failed to get current playing
+    		return false;
+    	}
+    	catch (IOException e) {
+    		return false;
+    	}
+    	catch (IllegalStateException e) {
+    		return false;
+    	}
+    	catch (IllegalArgumentException e) {
+    		//Wrong format
+    		return false;
+    	}
+    }
+    
+    /**
+     * Vote off the song that corresponds to the trackId
+     * 
+     * @author Matthew Mole
+     */
+    public boolean vote(String trackId) {
+    	try {
+    		//TODO: check trackId is valid
+    		jc.requestVoteOff(trackId);
     		return true;
     	}
     	catch (JHGDException e) {
@@ -159,26 +187,9 @@ public class ahgdClient extends Activity {
     	catch (IllegalStateException e) {
     		return false;
     	}
-    }
-    
-    /**
-     * Vote off the song that corresponds to the trackId
-     * 
-     * @author Matthew Mole
-     */
-    public void vote(int trackId) {
-    	try {
-    		//TODO: check trackId is valid
-    		jc.requestVoteOff(""+trackId);
-    	}
-    	catch (JHGDException e) {
-    		//Failed to get current playing
-    	}
-    	catch (IOException e) {
-    		
-    	}
-    	catch (IllegalStateException e) {
-    		
+    	catch (IllegalArgumentException e) {
+    		//Wrong format
+    		return false;
     	}
     }
     
@@ -201,9 +212,5 @@ public class ahgdClient extends Activity {
      */
     public void getPlaylist() {
     	
-    }
-    
-    public void log(String tag, String message) {
-    	Log.i(tag, message);
     }
 }

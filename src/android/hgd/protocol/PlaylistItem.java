@@ -19,10 +19,23 @@
 
 package android.hgd.protocol;
 
+/**
+ * A class representing a PlaylistItem AT THE POINT OF INSTANTIATION.
+ * If data obtained by a call to libjhgdc is left for a large period of time
+ * then a PlaylistItem object created from it, the PlaylistItem will be out of date.
+ */
 public class PlaylistItem {
 
 	private String trackId, filename, artist, title, user;
 	
+	/**
+	 * @author Matthew Mole
+	 * @param trackId The ID of the song, typically an incrementing natural
+	 * @param filename The filename of the uploaded song
+	 * @param artist The song's artist
+	 * @param title The song's title
+	 * @param user The user who uploaded the file
+	 */
 	public PlaylistItem(String trackId, String filename, String artist, String title, String user) {
 		this.trackId = trackId;
 		this.filename = filename;
@@ -31,48 +44,70 @@ public class PlaylistItem {
 		this.user = user;
 	}
 	
-	/*
-	 * Parse input of the format:
-	 * ok|<playing?>[|<track-id>|<filename>|<artist>|<title>|<user>]
-	 * obtained from HGDClient.requestNowPlaying()
-	 * and return a populated single entry playlist
+	/**
+	 * Parse input obtained from HGDClient.requestNowPlaying() and return a populated PlaylistItem.
+	 * 
+	 * @author Matthew Mole
+	 * @param input An input of expected format: ok|0 or ok|?|<track-id>|<filename>|<artist>|<title>|<user>
+	 * @return A PlaylistItem object instantiated with an current song data, parsed from the given input
 	 */
-	public static PlaylistItem getPlaylistItem(String input) {
-		try {
+	public static PlaylistItem getPlaylistItem(String input) throws IllegalArgumentException {
+		if (input.split("|").length == 2) { //ok|0 = not playing
+			return new EmptyPlaylistItem();
+		}
+		else if (input.split("|").length == 7) {
 			return new PlaylistItem(input.split("|")[2], input.split("|")[3], input.split("|")[4], input.split("|")[5], input.split("|")[6]);
 		}
-		catch (Exception e) {
-			return null;
+		else {
+			throw new IllegalArgumentException("input incorrect format");
 		}
 	}
 	
+	/**
+	 * @author Matthew Mole
+	 * @return The trackId
+	 */
 	public String getId() {
 		return this.trackId;
 	}
 	
-	public int getIntegerId() {
-		try {
-			return Integer.parseInt(this.trackId);
-		}
-		catch (Exception e) {
-			//Not a number
-			return -1;
-		}
-	}
-	
+	/**
+	 * @author Matthew Mole
+	 * @return The filename
+	 */
 	public String getFilename() {
 		return this.filename;
 	}
 	
+	/**
+	 * @author Matthew Mole
+	 * @return The artist
+	 */
 	public String getArtist() {
 		return this.artist;
 	}
 	
+	/**
+	 * @author Matthew Mole
+	 * @return The song title
+	 */
 	public String getTitle() {
 		return this.title;
 	}
 	
+	/**
+	 * @author Matthew Mole
+	 * @return The user who enqueued the file
+	 */
 	public String getUser() {
 		return this.user;
+	}
+	
+	/**
+	 * @author Matthew Mole
+	 * @return True if there is no current song playing
+	 */
+	public boolean isEmpty() {
+		return false;
 	}
 }
