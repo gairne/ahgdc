@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="hello">Hello World, hgdClient!</string>
-    <string name="app_name">Ahgdc</string>
+    <string name="app_name">ahgdc</string>
+    <string name="up_one_level">..</string>
+    <string name="current_dir">.</string>
 </resources>

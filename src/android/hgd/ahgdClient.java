@@ -19,13 +19,25 @@
 
 package android.hgd;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStreamReader;
 
 import android.app.Activity;
+import android.app.ListActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
+import android.widget.Toast;
 
 import android.hgd.ahgdConstants;
+import android.hgd.protocol.PlaylistItem;
 
 import jhgdc.library.HGDClient;
 import jhgdc.library.HGDConsts;
@@ -52,11 +64,35 @@ import jhgdc.library.JHGDException;
 public class ahgdClient extends Activity {
     /** Called when the activity is first created. */
 	private HGDClient jc;
+	private FileBrowser f;
+	private String[] listItems = {};
+	
+	private ListView filelist;
 	
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
+        
+        f = new FileBrowser();
+        
+        filelist = (ListView) findViewById(R.id.filesystem);
+        filelist.setOnItemClickListener(new OnItemClickListener() {
+        	public void onItemClick(AdapterView parent, View v, int position,
+        	long id) {
+        		Toast.makeText(parent.getContext(), "You have selected " + listItems[position], Toast.LENGTH_SHORT).show();
+        		if (f.changeDirectory(listItems[position])) {
+        			Toast.makeText(parent.getContext(), "You changed dir " + listItems[position], Toast.LENGTH_SHORT).show();
+        			listItems = FileBrowser.toStringArray(f.listDirectory());
+        		}
+        	}
+        	});
+		
+        File[] fs = f.listDirectory(new File("/"));
+        listItems = FileBrowser.toStringArray(fs);
+
+        filelist.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, listItems));
+        
         Log.i("ahgdc", "Example started");
         
         String host = "10.0.2.2";
@@ -99,29 +135,29 @@ public class ahgdClient extends Activity {
      */
     public boolean vote() {
     	try {
-    		String response = jc.requestNowPlaying();
+    		PlaylistItem response = PlaylistItem.getPlaylistItem(jc.requestNowPlaying());
     		
-    		if (response.split("|")[1].equals("0")) {
-        		//Song not playing
-    			return ahgdConstants.AHGD_FAIL;
+    		if (response == null) {
+        		//Failed to get current playing
+    			return false;
         	}
-        	else {
-        		//Catch all possible errors that can occur here.
-        		vote(Integer.parseInt(response.split("|")[2]));
-        		return ahgdConstants.AHGD_SUCCESS;
+        	if (response.getIntegerId() == -1) {
+        		//fail at invalid integer
+        		return false;
         	}
+    		
+    		vote(response.getIntegerId());
+    		return true;
     	}
     	catch (JHGDException e) {
-    		//Log command failure
-    		return ahgdConstants.AHGD_FAIL;
+    		//Failed to get current playing
+    		return false;
     	}
     	catch (IOException e) {
-    		//Log
-    		return ahgdConstants.AHGD_FAIL;
+    		return false;
     	}
     	catch (IllegalStateException e) {
-    		//client not connected
-    		return ahgdConstants.AHGD_FAIL;
+    		return false;
     	}
     }
     
@@ -132,20 +168,37 @@ public class ahgdClient extends Activity {
      */
     public void vote(int trackId) {
     	try {
-    		jc.requestVoteOff();
+    		//TODO: check trackId is valid
+    		jc.requestVoteOff(""+trackId);
     	}
     	catch (JHGDException e) {
-    		
+    		//Failed to get current playing
     	}
     	catch (IOException e) {
     		
     	}
+    	catch (IllegalStateException e) {
+    		
+    	}
     }
     
+    /**
+     * 
+     * @author Matthew Mole
+     */
     public void enqueue() {
-    
+    	try {
+    		BufferedReader input = new BufferedReader(new InputStreamReader(openFileInput("/")));
+    	}
+    	catch (FileNotFoundException e) {
+    		
+    	}
     }
     
+    /**
+     * 
+     * @author Matthew Mole
+     */
     public void getPlaylist() {
     	
     }
