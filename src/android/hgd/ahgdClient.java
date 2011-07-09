@@ -26,22 +26,28 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.ListActivity;
+import android.content.DialogInterface;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
+import android.widget.BaseAdapter;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Toast;
 
 import android.hgd.ahgdConstants;
-import android.hgd.protocol.PlaylistItem;
 
 import jhgdc.library.HGDClient;
 import jhgdc.library.HGDConsts;
 import jhgdc.library.JHGDException;
+import jhgdc.library.Playlist;
+import jhgdc.library.PlaylistItem;
+import jhgdc.library.EmptyPlaylistItem;
 
 /**
  * This is the main entrypoint into the application.
@@ -66,6 +72,10 @@ public class ahgdClient extends Activity {
 	private HGDClient jc;
 	private FileBrowser f;
 	private String[] listItems = {};
+	private String[] test = {"1","2"};
+	private ArrayAdapter myAdapter;
+	private String hostname;
+	private String port;
 	
 	private ListView filelist;
 	
@@ -84,6 +94,11 @@ public class ahgdClient extends Activity {
         		if (f.changeDirectory(listItems[position])) {
         			Toast.makeText(parent.getContext(), "You changed dir " + listItems[position], Toast.LENGTH_SHORT).show();
         			listItems = FileBrowser.toStringArray(f.listDirectory());
+        			//myAdapter.notifyDataSetChanged();
+        			resetAdapter();
+        		}
+        		else if (f.isValidToUpload(new File(f.currentPath + "/" + listItems[position]))) {
+        			enqueue(f.currentPath + "/" + listItems[position]);
         		}
         	}
         	});
@@ -91,23 +106,51 @@ public class ahgdClient extends Activity {
         File[] fs = f.listDirectory(new File("/"));
         listItems = FileBrowser.toStringArray(fs);
 
-        filelist.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, listItems));
+        myAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, listItems);
+        
+        filelist.setAdapter(myAdapter);
         
         Log.i("ahgdc", "Example started");
         
-        String host = "10.0.2.2";
+        AlertDialog.Builder alert = new AlertDialog.Builder(this);
+        alert.setTitle("host");
+        alert.setMessage("enter hostname:port");
+        
+        final EditText input = new EditText(this);
+        alert.setView(input);
+        
+        alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+			
+			public void onClick(DialogInterface dialog, int which) {
+				hostname = input.getText().toString().split(":")[0];
+				port = input.getText().toString().split(":")[1];
+				connect();
+			}
+		});
+        
+        alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+			
+			public void onClick(DialogInterface dialog, int which) {
+				// TODO Auto-generated method stub
+				
+			}
+		});
+        
+        alert.show();
+        
         /*
          * 127.0.0.1 gives connection refused:
          * See http://stackoverflow.com/questions/3497253/java-net-connectexception-connection-refused-android-emulator
          */
-        int port = 6633;
-        String username = "test";
+    }
+    
+    public void connect() {
+    	jc = new HGDClient();
+    	String username = "test";
         String password = "password";
-        
-        jc = new HGDClient();
         try {
-        	Log.i("ahgdc", "Attempting to connect to " + host + ":" + port);
-	        jc.connect(host, port); 
+        	Log.i("ahgdc", "Attempting to connect to " + hostname + ":" + port);
+	        jc.connect(hostname, Integer.parseInt(port)); 
 	        Log.i("ahgdc", "Logging in with username " + username + " and password " + password);
 	        jc.login(username, password);
 	        Log.i("ahgdc", "Playlist items");
@@ -116,7 +159,8 @@ public class ahgdClient extends Activity {
 	        	Log.i("ahgdc", item);
 	        }
 	        Log.i("ahgdc", "Disconnecting");
-	        jc.disconnect(true);
+	        //jc.disconnect(true);
+	        
 	    }
         catch (IOException e) {
         	Log.e("ahgdc:io", e.toString());
@@ -128,6 +172,11 @@ public class ahgdClient extends Activity {
         Log.i("ahgdc", "Example stopped");
     }
     
+    public void resetAdapter() {
+    	myAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, listItems);       
+        filelist.setAdapter(myAdapter);
+    }
+    
     public void log(String tag, String message) {
     	Log.i(tag, message);
     }
@@ -137,39 +186,47 @@ public class ahgdClient extends Activity {
     /**
      * Vote off the current song
      * 
-     * @author Matthew Mole
+     * @return True on success.
      */
     public boolean vote() {
     	try {
-    		PlaylistItem response = PlaylistItem.getPlaylistItem(jc.requestNowPlaying()); 		
+    		PlaylistItem response = jc.getCurrentPlaying();		
     		if (!response.isEmpty()) {
     			vote(response.getId());
     			return true;
     		}
     		else {
+    			Toast.makeText(this.getBaseContext(), R.string.NothingPlaying, Toast.LENGTH_SHORT);
     			return false;
     		}
     	}
-    	catch (JHGDException e) {
-    		//Failed to get current playing
-    		return false;
-    	}
-    	catch (IOException e) {
-    		return false;
+    	catch (IllegalArgumentException e) {
+    		Toast.makeText(this.getBaseContext(), R.string.IAE, Toast.LENGTH_SHORT);
     	}
     	catch (IllegalStateException e) {
-    		return false;
+    		if (e.getMessage().equals("Client not connected")) {
+    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT);
+    		}
+    		else if (e.getMessage().equals("Client not authenticated")) {
+    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotAuthenticated, Toast.LENGTH_SHORT);
+    		}
+    		else {
+    			Toast.makeText(this.getBaseContext(), R.string.Error, Toast.LENGTH_SHORT);
+    		}
     	}
-    	catch (IllegalArgumentException e) {
-    		//Wrong format
-    		return false;
+    	catch (IOException e) {
+    		Toast.makeText(this.getBaseContext(), R.string.IOE, Toast.LENGTH_SHORT);
     	}
+    	catch (JHGDException e) {
+    		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT);
+    	}
+    	return false;
     }
     
     /**
      * Vote off the song that corresponds to the trackId
      * 
-     * @author Matthew Mole
+     * @return True on success.
      */
     public boolean vote(String trackId) {
     	try {
@@ -177,40 +234,111 @@ public class ahgdClient extends Activity {
     		jc.requestVoteOff(trackId);
     		return true;
     	}
-    	catch (JHGDException e) {
-    		//Failed to get current playing
-    		return false;
-    	}
-    	catch (IOException e) {
-    		return false;
+    	catch (IllegalArgumentException e) {
+    		Toast.makeText(this.getBaseContext(), R.string.IAE, Toast.LENGTH_SHORT);
     	}
     	catch (IllegalStateException e) {
-    		return false;
+    		if (e.getMessage().equals("Client not connected")) {
+    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT);
+    		}
+    		else if (e.getMessage().equals("Client not authenticated")) {
+    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotAuthenticated, Toast.LENGTH_SHORT);
+    		}
+    		else {
+    			Toast.makeText(this.getBaseContext(), R.string.Error, Toast.LENGTH_SHORT);
+    		}
     	}
-    	catch (IllegalArgumentException e) {
-    		//Wrong format
-    		return false;
+    	catch (IOException e) {
+    		Toast.makeText(this.getBaseContext(), R.string.IOE, Toast.LENGTH_SHORT);
     	}
+    	catch (JHGDException e) {
+    		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT);
+    	}
+    	return false;
     }
-    
+
     /**
-     * 
-     * @author Matthew Mole
+     * Upload a file to the HGD server.
      */
-    public void enqueue() {
+    public void enqueue(String filename) {
     	try {
-    		BufferedReader input = new BufferedReader(new InputStreamReader(openFileInput("/")));
+    		//String filename = f.chooseFile();
+    		if (f.isValidToUpload(new File(filename))) {
+    			jc.requestQueue(new File(filename));
+    		}
     	}
     	catch (FileNotFoundException e) {
-    		
+    		Toast.makeText(this.getBaseContext(), R.string.Queue_NotFound, Toast.LENGTH_SHORT);
     	}
+    	catch (IllegalStateException e) {
+    		if (e.getMessage().equals("Client not connected")) {
+    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT);
+    		}
+    		else if (e.getMessage().equals("Client not authenticated")) {
+    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotAuthenticated, Toast.LENGTH_SHORT);
+    		}
+    		else {
+    			Toast.makeText(this.getBaseContext(), R.string.Error, Toast.LENGTH_SHORT);
+    		}
+    	}
+    	catch (IOException e) {
+    		Toast.makeText(this.getBaseContext(), R.string.IOE, Toast.LENGTH_SHORT);
+    	}
+    	catch (JHGDException e) {
+    		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT);
+    	}
+    	
     }
     
     /**
+     * Return the current Playlist.
      * 
-     * @author Matthew Mole
+     * @return a Playlist object, populated with PlaylistItems.
      */
-    public void getPlaylist() {
-    	
+    public Playlist getPlaylist() {
+    	try {
+    		return jc.getPlaylist();
+    	}
+    	catch (IllegalArgumentException e) {
+    		Toast.makeText(this.getBaseContext(), R.string.IAE, Toast.LENGTH_SHORT);
+    	}
+    	catch (IllegalStateException e) {
+    		Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT);
+    	}
+    	catch (IOException e) {
+    		Toast.makeText(this.getBaseContext(), R.string.IOE, Toast.LENGTH_SHORT);
+    	}
+    	catch (JHGDException e) {
+    		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT);
+    	}
+    	return null;
     }
+    
+    /**
+     * Return the current playing song.
+     *
+     * @return A PlaylistItem populated with the details of the current playing song.
+     */
+    public PlaylistItem getCurrent() {
+    	try {
+    		return jc.getCurrentPlaying();
+    	}
+    	catch (IllegalArgumentException e) {
+    		Toast.makeText(this.getBaseContext(), R.string.IAE, Toast.LENGTH_SHORT);
+    	}
+    	catch (IllegalStateException e) {
+    		Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT);
+    	}
+    	catch (IOException e) {
+    		Toast.makeText(this.getBaseContext(), R.string.IOE, Toast.LENGTH_SHORT);
+    	}
+    	catch (JHGDException e) {
+    		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT);
+    	}
+    	return null;
+    }
+    
+    
+    
+    
 }

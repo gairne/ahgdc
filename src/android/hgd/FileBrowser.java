@@ -25,7 +25,7 @@ import android.util.Log;
 
 public class FileBrowser
 {
-	private String currentPath = "/";
+	public String currentPath = "/";
 	private File[] currentPathFiles = {};
 	
 	public FileBrowser() {
@@ -37,6 +37,16 @@ public class FileBrowser
 			return null;
 		}
 		return f.listFiles();
+	}
+	
+	/**
+	 * Displays the file browser widgit and prompts the user to select a file.
+	 * Returns the empty string if the user cancels.
+	 * 
+	 * @return "" if cancelled, full pathname to file on success.
+	 */
+	public String chooseFile() {
+		return "/mnt/sdcard/downloads/bluetooth/Baby.mp3";
 	}
 	
 	//THings can be directories, but return null. perhaps if there are security issues.

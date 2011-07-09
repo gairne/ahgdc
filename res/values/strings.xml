@@ -2,6 +2,14 @@
 <resources>
     <string name="hello">Hello World, hgdClient!</string>
     <string name="app_name">ahgdc</string>
-    <string name="up_one_level">..</string>
-    <string name="current_dir">.</string>
+    <string name="up">..</string>
+    <string name="IAE">The server responded in an unexpected format.</string>
+    <string name="IOE">The client was unable to communicate with the server.</string>
+    <string name="ISE_AlreadyConnected">You are already connected to a server.</string>
+    <string name="ISE_NotConnected">You must connect to a server.</string>
+    <string name="ISE_NotAuthenticated">You must login.</string>
+    <string name="JHGDE">An error occurred while processing a server response.</string>
+    <string name="Error">An error occurred.</string>
+    <string name="NothingPlaying">Nothing is currently playing.</string>
+    <string name="Queue_NotFound">File not found.</string>
 </resources>
