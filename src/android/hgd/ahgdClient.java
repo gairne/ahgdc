@@ -160,13 +160,23 @@ public class ahgdClient extends Activity {
 	        }
 	        Log.i("ahgdc", "Disconnecting");
 	        //jc.disconnect(true);
-	        
+	        Toast.makeText(getApplicationContext(), "Connected", Toast.LENGTH_SHORT).show();
 	    }
         catch (IOException e) {
+        	Toast.makeText(getApplicationContext(), "connect IOException", Toast.LENGTH_SHORT).show();
         	Log.e("ahgdc:io", e.toString());
         }
         catch (JHGDException e) {
+        	Toast.makeText(getApplicationContext(), "connect JHGDCException", Toast.LENGTH_SHORT).show();
         	Log.e("ahgdc:jhgd", e.toString());
+        }
+        catch (IllegalStateException e) {
+        	Toast.makeText(getApplicationContext(), "connect IllegalStateException", Toast.LENGTH_SHORT).show();
+        	Log.e("ahgdc:is", e.toString());
+        }
+        catch (NumberFormatException e) {
+        	Toast.makeText(getApplicationContext(), "connect NumberFormatException", Toast.LENGTH_SHORT).show();
+        	Log.e("ahgdc:nf", e.toString());
         }
         
         Log.i("ahgdc", "Example stopped");
@@ -196,29 +206,29 @@ public class ahgdClient extends Activity {
     			return true;
     		}
     		else {
-    			Toast.makeText(this.getBaseContext(), R.string.NothingPlaying, Toast.LENGTH_SHORT);
+    			Toast.makeText(this.getBaseContext(), R.string.NothingPlaying, Toast.LENGTH_SHORT).show();
     			return false;
     		}
     	}
     	catch (IllegalArgumentException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.IAE, Toast.LENGTH_SHORT);
+    		Toast.makeText(this.getBaseContext(), R.string.IAE, Toast.LENGTH_SHORT).show();
     	}
     	catch (IllegalStateException e) {
     		if (e.getMessage().equals("Client not connected")) {
-    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT);
+    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT).show();
     		}
     		else if (e.getMessage().equals("Client not authenticated")) {
-    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotAuthenticated, Toast.LENGTH_SHORT);
+    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotAuthenticated, Toast.LENGTH_SHORT).show();
     		}
     		else {
-    			Toast.makeText(this.getBaseContext(), R.string.Error, Toast.LENGTH_SHORT);
+    			Toast.makeText(this.getBaseContext(), R.string.Error, Toast.LENGTH_SHORT).show();
     		}
     	}
     	catch (IOException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.IOE, Toast.LENGTH_SHORT);
+    		Toast.makeText(this.getBaseContext(), R.string.IOE, Toast.LENGTH_SHORT).show();
     	}
     	catch (JHGDException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT);
+    		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT).show();
     	}
     	return false;
     }
@@ -235,24 +245,24 @@ public class ahgdClient extends Activity {
     		return true;
     	}
     	catch (IllegalArgumentException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.IAE, Toast.LENGTH_SHORT);
+    		Toast.makeText(this.getBaseContext(), R.string.IAE, Toast.LENGTH_SHORT).show();
     	}
     	catch (IllegalStateException e) {
     		if (e.getMessage().equals("Client not connected")) {
-    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT);
+    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT).show();
     		}
     		else if (e.getMessage().equals("Client not authenticated")) {
-    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotAuthenticated, Toast.LENGTH_SHORT);
+    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotAuthenticated, Toast.LENGTH_SHORT).show();
     		}
     		else {
-    			Toast.makeText(this.getBaseContext(), R.string.Error, Toast.LENGTH_SHORT);
+    			Toast.makeText(this.getBaseContext(), R.string.Error, Toast.LENGTH_SHORT).show();
     		}
     	}
     	catch (IOException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.IOE, Toast.LENGTH_SHORT);
+    		Toast.makeText(this.getBaseContext(), R.string.IOE, Toast.LENGTH_SHORT).show();
     	}
     	catch (JHGDException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT);
+    		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT).show();
     	}
     	return false;
     }
@@ -268,24 +278,24 @@ public class ahgdClient extends Activity {
     		}
     	}
     	catch (FileNotFoundException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.Queue_NotFound, Toast.LENGTH_SHORT);
+    		Toast.makeText(this.getBaseContext(), R.string.Queue_NotFound, Toast.LENGTH_SHORT).show();
     	}
     	catch (IllegalStateException e) {
     		if (e.getMessage().equals("Client not connected")) {
-    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT);
+    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT).show();
     		}
     		else if (e.getMessage().equals("Client not authenticated")) {
-    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotAuthenticated, Toast.LENGTH_SHORT);
+    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotAuthenticated, Toast.LENGTH_SHORT).show();
     		}
     		else {
-    			Toast.makeText(this.getBaseContext(), R.string.Error, Toast.LENGTH_SHORT);
+    			Toast.makeText(this.getBaseContext(), R.string.Error, Toast.LENGTH_SHORT).show();
     		}
     	}
     	catch (IOException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.IOE, Toast.LENGTH_SHORT);
+    		Toast.makeText(this.getBaseContext(), R.string.IOE, Toast.LENGTH_SHORT).show();
     	}
     	catch (JHGDException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT);
+    		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT).show();
     	}
     	
     }
@@ -300,16 +310,16 @@ public class ahgdClient extends Activity {
     		return jc.getPlaylist();
     	}
     	catch (IllegalArgumentException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.IAE, Toast.LENGTH_SHORT);
+    		Toast.makeText(this.getBaseContext(), R.string.IAE, Toast.LENGTH_SHORT).show();
     	}
     	catch (IllegalStateException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT);
+    		Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT).show();
     	}
     	catch (IOException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.IOE, Toast.LENGTH_SHORT);
+    		Toast.makeText(this.getBaseContext(), R.string.IOE, Toast.LENGTH_SHORT).show();
     	}
     	catch (JHGDException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT);
+    		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT).show();
     	}
     	return null;
     }
@@ -324,16 +334,16 @@ public class ahgdClient extends Activity {
     		return jc.getCurrentPlaying();
     	}
     	catch (IllegalArgumentException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.IAE, Toast.LENGTH_SHORT);
+    		Toast.makeText(this.getBaseContext(), R.string.IAE, Toast.LENGTH_SHORT).show();
     	}
     	catch (IllegalStateException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT);
+    		Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT).show();
     	}
     	catch (IOException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.IOE, Toast.LENGTH_SHORT);
+    		Toast.makeText(this.getBaseContext(), R.string.IOE, Toast.LENGTH_SHORT).show();
     	}
     	catch (JHGDException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT);
+    		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT).show();
     	}
     	return null;
     }
