@@ -51,19 +51,6 @@ import jhgdc.library.EmptyPlaylistItem;
 
 /**
  * This is the main entrypoint into the application.
- * At the moment this is an example - a proof of concept.
- * To run this, you must have a hgd server installed on your computer
- * accepting connections from port 6633.
- * 
- * You also require a username 'test' with password 'password.
- * 
- * Steps to complete:
- * git clone git://github.com/vext01/hgd.git hgd
- * cd hgd
- * autoreconf && autoconf && ./configure && make
- * ./hgd-admin user-add test
- * ./hgd-netd &
- * ./hgd-playd &
  * 
  * @author Matthew Mole
  */
@@ -76,6 +63,8 @@ public class ahgdClient extends Activity {
 	private ArrayAdapter myAdapter;
 	private String hostname;
 	private String port;
+	private String username;
+	private String password;
 	
 	private ListView filelist;
 	
@@ -138,6 +127,31 @@ public class ahgdClient extends Activity {
         
         alert.show();
         
+        AlertDialog.Builder alert2 = new AlertDialog.Builder(this);
+        alert2.setTitle("username");
+        alert2.setMessage("enter username:password");
+        
+        final EditText input2 = new EditText(this);
+        alert2.setView(input2);
+        
+        alert2.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+			
+			public void onClick(DialogInterface dialog, int which) {
+				username = input2.getText().toString().split(":")[0];
+				password = input2.getText().toString().split(":")[1];
+			}
+		});
+        
+        alert2.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+			
+			public void onClick(DialogInterface dialog, int which) {
+				// TODO Auto-generated method stub
+				
+			}
+		});
+        
+        alert2.show();
+        
         /*
          * 127.0.0.1 gives connection refused:
          * See http://stackoverflow.com/questions/3497253/java-net-connectexception-connection-refused-android-emulator
@@ -146,8 +160,6 @@ public class ahgdClient extends Activity {
     
     public void connect() {
     	jc = new HGDClient();
-    	String username = "test";
-        String password = "password";
         try {
         	Log.i("ahgdc", "Attempting to connect to " + hostname + ":" + port);
 	        jc.connect(hostname, Integer.parseInt(port)); 
