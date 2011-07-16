@@ -24,20 +24,25 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ListActivity;
+import android.app.TabActivity;
 import android.content.DialogInterface;
+import android.content.res.Resources;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.view.View.OnClickListener;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.TabHost;
 import android.widget.Toast;
 
 import android.hgd.ahgdConstants;
@@ -67,48 +72,46 @@ import jhgdc.library.EmptyPlaylistItem;
  * 
  * @author Matthew Mole
  */
-public class ahgdClient extends Activity {
+public class ahgdClient extends TabActivity {
     /** Called when the activity is first created. */
 	private HGDClient jc;
-	private FileBrowser f;
-	private String[] listItems = {};
-	private String[] test = {"1","2"};
-	private ArrayAdapter myAdapter;
+	
 	private String hostname;
 	private String port;
 	
+	//filebrowser
 	private ListView filelist;
+	private FileBrowser f;
+	private String[] listItems = {};
+	private ArrayAdapter myAdapter;
+	
+	//playlist
+	private ListView songlist;
+	private ArrayAdapter songAdapter;
+	
+	//servers
 	
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.main);
+        //setContentView(R.layout.main);
+        TabHost tabs = getTabHost();
         
-        f = new FileBrowser();
+        this.getLayoutInflater().inflate(R.layout.main, tabs.getTabContentView(), true);
         
-        filelist = (ListView) findViewById(R.id.filesystem);
-        filelist.setOnItemClickListener(new OnItemClickListener() {
-        	public void onItemClick(AdapterView parent, View v, int position,
-        	long id) {
-        		Toast.makeText(parent.getContext(), "You have selected " + listItems[position], Toast.LENGTH_SHORT).show();
-        		if (f.changeDirectory(listItems[position])) {
-        			Toast.makeText(parent.getContext(), "You changed dir " + listItems[position], Toast.LENGTH_SHORT).show();
-        			listItems = FileBrowser.toStringArray(f.listDirectory());
-        			//myAdapter.notifyDataSetChanged();
-        			resetAdapter();
-        		}
-        		else if (f.isValidToUpload(new File(f.currentPath + "/" + listItems[position]))) {
-        			enqueue(f.currentPath + "/" + listItems[position]);
-        		}
-        	}
-        	});
-		
-        File[] fs = f.listDirectory(new File("/"));
-        listItems = FileBrowser.toStringArray(fs);
-
-        myAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, listItems);
+        Resources resources = getResources();
         
-        filelist.setAdapter(myAdapter);
+        TabHost.TabSpec t_upload = tabs.newTabSpec("filebrowser").setContent(R.id.filebrowser).setIndicator("Upload", resources.getDrawable(R.drawable.upload));
+        TabHost.TabSpec t_playlist = tabs.newTabSpec("playlist").setContent(R.id.playlist).setIndicator("Playlist", resources.getDrawable(R.drawable.playlist));
+        TabHost.TabSpec t_servers = tabs.newTabSpec("servers").setContent(R.id.servers).setIndicator("Servers", resources.getDrawable(R.drawable.servers));
+        
+        tabs.addTab(t_upload);
+        tabs.addTab(t_playlist);
+        tabs.addTab(t_servers);
+        
+        init_upload_tab();
+        init_playlist_tab();
+        init_servers_tab();
         
         Log.i("ahgdc", "Example started");
         
@@ -144,6 +147,95 @@ public class ahgdClient extends Activity {
          */
     }
     
+    public void init_playlist_tab() {
+    	songlist = (ListView) findViewById(R.id.playlist);
+    	songlist.setOnItemClickListener(new OnItemClickListener() {
+    		public void onItemClick(AdapterView parent, View v, int position, long id) {
+    			resetSongAdapter();
+    		}
+    	});
+    	
+    	resetSongAdapter();
+    	
+    	String[] temp = new String[1];
+    	temp[0] = "Click to refresh";
+    	
+    	songAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, temp);
+        
+        songlist.setAdapter(songAdapter);
+    }
+    
+    public void init_servers_tab() {
+    	
+    }
+    
+    public void init_upload_tab() {
+    	f = new FileBrowser();
+        
+        filelist = (ListView) findViewById(R.id.filebrowser);
+        filelist.setOnItemClickListener(new OnItemClickListener() {
+        	public void onItemClick(AdapterView parent, View v, int position,
+        	long id) {
+        		Toast.makeText(parent.getContext(), "You have selected " + listItems[position], Toast.LENGTH_SHORT).show();
+        		if (f.changeDirectory(listItems[position])) {
+        			Toast.makeText(parent.getContext(), "You changed dir " + listItems[position], Toast.LENGTH_SHORT).show();
+        			listItems = FileBrowser.toStringArray(f.listDirectory());
+        			//myAdapter.notifyDataSetChanged();
+        			resetFileListAdapter();
+        		}
+        		else if (f.isValidToUpload(new File(f.currentPath + "/" + listItems[position]))) {
+        			enqueue(f.currentPath + "/" + listItems[position]);
+        		}
+        	}
+        	});
+		
+        File[] fs = f.listDirectory(new File("/"));
+        listItems = FileBrowser.toStringArray(fs);
+
+        myAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, listItems);
+        
+        filelist.setAdapter(myAdapter);
+    }
+    
+    public void resetFileListAdapter() {
+    	myAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, listItems);       
+        filelist.setAdapter(myAdapter);
+    }
+    
+    public void resetSongAdapter() {
+    	String[] strlist;
+    	try {
+    		ArrayList<PlaylistItem> playlist = getPlaylist().getItems();
+    		
+    		if (playlist.isEmpty()) {
+    			strlist = new String[1];
+    			strlist[0] = "Nothing playing";
+    		}
+    		else {
+    			strlist = new String[playlist.size()];
+    			int i = 0;
+            	for (PlaylistItem p : playlist) {
+            		strlist[i] = p.getTitle();
+            		i++;
+            	}
+    		}
+    	}
+    	catch (NullPointerException e) {
+    		Log.e("", e.toString());
+    		strlist = new String[1];
+        	strlist[0] = "Nothing playing (exception)";
+    	}
+    	
+    	songAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, strlist);
+        songlist.setAdapter(songAdapter);
+    }
+    
+    public void log(String tag, String message) {
+    	Log.i(tag, message);
+    }
+    
+    //TODO: 
+    // THE FOLLOWING METHODS LIAISE WITH libjhgdc:HGDClient IN ORDER TO PROVIDE HGDC FUNCTIONALITY
     public void connect() {
     	jc = new HGDClient();
     	String username = "test";
@@ -172,16 +264,6 @@ public class ahgdClient extends Activity {
         Log.i("ahgdc", "Example stopped");
     }
     
-    public void resetAdapter() {
-    	myAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, listItems);       
-        filelist.setAdapter(myAdapter);
-    }
-    
-    public void log(String tag, String message) {
-    	Log.i(tag, message);
-    }
-    
-    // THE FOLLOWING METHODS LIAISE WITH libjhgdc:HGDClient IN ORDER TO PROVIDE HGDC FUNCTIONALITY
     
     /**
      * Vote off the current song
@@ -301,16 +383,22 @@ public class ahgdClient extends Activity {
     	}
     	catch (IllegalArgumentException e) {
     		Toast.makeText(this.getBaseContext(), R.string.IAE, Toast.LENGTH_SHORT);
+    		Log.i("", "IAE");
     	}
     	catch (IllegalStateException e) {
     		Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT);
+    		Log.i("", "ISE");
     	}
     	catch (IOException e) {
     		Toast.makeText(this.getBaseContext(), R.string.IOE, Toast.LENGTH_SHORT);
+    		Log.i("", "IOE");
     	}
     	catch (JHGDException e) {
     		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT);
+    		Log.i("", "JHGDE");
     	}
+    	
+    	Log.i("","null here");
     	return null;
     }
     
