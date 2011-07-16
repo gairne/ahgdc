@@ -25,6 +25,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -42,6 +43,7 @@ import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.SimpleAdapter;
 import android.widget.TabHost;
 import android.widget.Toast;
 
@@ -87,7 +89,7 @@ public class ahgdClient extends TabActivity {
 	
 	//playlist
 	private ListView songlist;
-	private ArrayAdapter songAdapter;
+	private SimpleAdapter songAdapter;
 	
 	//servers
 	
@@ -157,10 +159,22 @@ public class ahgdClient extends TabActivity {
     	
     	resetSongAdapter();
     	
-    	String[] temp = new String[1];
-    	temp[0] = "Click to refresh";
+    	//String[] temp = new String[1];
+    	//temp[0] = "Click to refresh";
     	
-    	songAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, temp);
+    	ArrayList<HashMap<String, String>> songData = new ArrayList<HashMap<String, String>>();
+    	HashMap<String, String> map;
+    	
+    	
+        map = new HashMap<String, String>();
+        map.put("title", "Click to refresh");
+        map.put("artist", "");
+        map.put("user", "");
+        songData.add(map);
+    	
+    	//songAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, temp);
+    	songAdapter = new SimpleAdapter (this.getBaseContext(), songData, R.layout.playlistitem,
+                new String[] {"title", "artist", "user"}, new int[] {R.id.title, R.id.artist, R.id.user});
         
         songlist.setAdapter(songAdapter);
     }
@@ -203,30 +217,48 @@ public class ahgdClient extends TabActivity {
     }
     
     public void resetSongAdapter() {
-    	String[] strlist;
+    	//String[] strlist;
+    	ArrayList<HashMap<String, String>> songData = new ArrayList<HashMap<String, String>>();
+    	HashMap<String, String> map;
+    	
     	try {
     		ArrayList<PlaylistItem> playlist = getPlaylist().getItems();
     		
     		if (playlist.isEmpty()) {
-    			strlist = new String[1];
-    			strlist[0] = "Nothing playing";
+    			map = new HashMap<String, String>();
+                map.put("title", "Nothing playing");
+                map.put("artist", "");
+                map.put("user", "");
+                songData.add(map);
     		}
     		else {
-    			strlist = new String[playlist.size()];
-    			int i = 0;
+    			//strlist = new String[playlist.size()];
+    			//int i = 0;
             	for (PlaylistItem p : playlist) {
-            		strlist[i] = p.getTitle();
-            		i++;
+            		//strlist[i] = p.getTitle();
+            		//i++;
+            		map = new HashMap<String, String>();
+                    map.put("title", p.getTitle());
+                    map.put("artist", p.getArtist());
+                    map.put("user", p.getUser());
+                    songData.add(map);
             	}
     		}
     	}
     	catch (NullPointerException e) {
-    		Log.e("", e.toString());
-    		strlist = new String[1];
-        	strlist[0] = "Nothing playing (exception)";
+    		//strlist = new String[1];
+        	//strlist[0] = "Nothing playing (exception)";
+    		map = new HashMap<String, String>();
+            map.put("title", "Click to refresh");
+            map.put("artist", "");
+            map.put("user", "");
+            songData.add(map);
     	}
     	
-    	songAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, strlist);
+    	//songAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, temp);
+    	songAdapter = new SimpleAdapter (this.getBaseContext(), songData, R.layout.playlistitem,
+                new String[] {"title", "artist", "user"}, new int[] {R.id.title, R.id.artist, R.id.user});
+        
         songlist.setAdapter(songAdapter);
     }
     
