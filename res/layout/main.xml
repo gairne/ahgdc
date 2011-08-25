@@ -4,21 +4,46 @@
 	android:layout_height="fill_parent">
 
 	<ListView
-			android:id="@+id/filebrowser"
-			android:layout_width="fill_parent"
-			android:layout_height="fill_parent" />
+		android:id="@+id/filebrowser"
+		android:layout_width="fill_parent"
+		android:layout_height="fill_parent"
+	/>
 
 	<ListView
 		android:id="@+id/playlist"
 		android:orientation="vertical"
 		android:layout_width="fill_parent"
-		android:layout_height="wrap_content"/>
+		android:layout_height="wrap_content"
+	/>
 	
-	<LinearLayout
-		android:id="@+id/servers"
-		android:orientation="vertical"
+	<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
 		android:layout_width="fill_parent"
-		android:layout_height="wrap_content">
+		android:id="@+id/serversframe"
+		android:orientation="vertical"
+		android:layout_height="fill_parent">
+		
+		<TextView
+			android:id="@+id/currentserver"
+			android:layout_width="fill_parent"
+			android:layout_height="wrap_content"
+			android:layout_gravity="center_horizontal|top"
+		/>
+		
+		<Button
+			android:id="@+id/serveradd"
+			android:layout_width="fill_parent"
+			android:layout_height="wrap_content"
+			android:layout_gravity="center_horizontal|bottom"
+			android:text="Add a server"
+		/>
+	
+		<ListView
+			android:id="@+id/serverlist"
+			android:orientation="vertical"
+			android:layout_width="fill_parent"
+			android:layout_height="fill_parent"
+		/>
+			
 	</LinearLayout>
 
 </FrameLayout>

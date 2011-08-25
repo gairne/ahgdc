@@ -12,4 +12,5 @@
     <string name="Error">An error occurred.</string>
     <string name="NothingPlaying">Nothing is currently playing.</string>
     <string name="Queue_NotFound">File not found.</string>
+    <string name="serverSelect">Select a server</string>
 </resources>
