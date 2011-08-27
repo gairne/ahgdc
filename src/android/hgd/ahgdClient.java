@@ -77,10 +77,6 @@ public class ahgdClient extends TabActivity {
 	
 	public static String SERVER_FILENAME = "hgd_server.config";
 	
-	//private String hostname;
-	//private String port;
-	//private String user;
-	
 	private ServerDetails connectedTo;
 	
 	//filebrowser
@@ -125,14 +121,11 @@ public class ahgdClient extends TabActivity {
 	public void onConfigurationChanged(Configuration newConfig)
 	{
 	    super.onConfigurationChanged(newConfig);
-	    //setContentView(R.layout.main);
-	    //createUI();
 	}
 	
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        //setContentView(R.layout.main);
         
         File root = Environment.getExternalStorageDirectory();
         if (!root.canWrite()){
