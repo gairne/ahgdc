@@ -79,6 +79,9 @@ public class ahgdClient extends TabActivity {
 	
 	private ServerDetails connectedTo;
 	
+	//Temporary state variables
+	private String toVoteOff;
+	
 	//filebrowser
 	private ListView filelist;
 	private FileBrowser f;
@@ -86,6 +89,7 @@ public class ahgdClient extends TabActivity {
 	private ArrayAdapter myAdapter;
 	
 	//playlist
+	private ArrayList<HashMap<String, String>> songData;
 	private ListView songlist;
 	private SimpleAdapter songAdapter;
 	
@@ -144,7 +148,17 @@ public class ahgdClient extends TabActivity {
     	songlist = (ListView) findViewById(R.id.playlist);
     	songlist.setOnItemClickListener(new OnItemClickListener() {
     		public void onItemClick(AdapterView parent, View v, int position, long id) {
-    			resetSongAdapter();
+    			if (songData == null) {
+    				resetSongAdapter();
+    			}
+    			else {
+    				if (songData.get(position).get("title").equals("Refresh")) {
+    					resetSongAdapter();
+    				}
+    				else {
+    					vote();
+    				}
+    			}
     		}
     	});
     	
@@ -153,12 +167,11 @@ public class ahgdClient extends TabActivity {
     	//String[] temp = new String[1];
     	//temp[0] = "Click to refresh";
     	
-    	ArrayList<HashMap<String, String>> songData = new ArrayList<HashMap<String, String>>();
+    	songData = new ArrayList<HashMap<String, String>>();
     	HashMap<String, String> map;
     	
-    	
         map = new HashMap<String, String>();
-        map.put("title", "Click to refresh");
+        map.put("title", "Refresh");
         map.put("artist", "");
         map.put("user", "");
         songData.add(map);
@@ -264,9 +277,10 @@ public class ahgdClient extends TabActivity {
         filelist.setOnItemClickListener(new OnItemClickListener() {
         	public void onItemClick(AdapterView parent, View v, int position,
         	long id) {
-        		Toast.makeText(parent.getContext(), "You have selected " + listItems[position], Toast.LENGTH_SHORT).show();
+        		//Toast.makeText(parent.getContext(), "You have selected " + listItems[position], Toast.LENGTH_SHORT).show();
         		if (f.changeDirectory(listItems[position])) {
-        			Toast.makeText(parent.getContext(), "You changed dir " + listItems[position], Toast.LENGTH_SHORT).show();
+        			Toast.makeText(parent.getContext(), new File(f.currentPath).getParent(), Toast.LENGTH_SHORT).show();
+        			//Toast.makeText(parent.getContext(), "You changed dir " + listItems[position], Toast.LENGTH_SHORT).show();
         			listItems = FileBrowser.toStringArray(f.listDirectory());
         			//myAdapter.notifyDataSetChanged();
         			resetFileListAdapter();
@@ -309,8 +323,20 @@ public class ahgdClient extends TabActivity {
                 map.put("artist", "");
                 map.put("user", "");
                 songData.add(map);
+                
+                map = new HashMap<String, String>();
+                map.put("title", "Refresh");
+                map.put("artist", "");
+                map.put("user", "");
+                songData.add(map);
     		}
     		else {
+    			map = new HashMap<String, String>();
+                map.put("title", "Refresh");
+                map.put("artist", "");
+                map.put("user", "");
+                songData.add(map);
+    			
     			//strlist = new String[playlist.size()];
     			//int i = 0;
             	for (PlaylistItem p : playlist) {
@@ -419,7 +445,20 @@ public class ahgdClient extends TabActivity {
     	try {
     		PlaylistItem response = jc.getCurrentPlaying();		
     		if (!response.isEmpty()) {
-    			vote(response.getId());
+    			AlertDialog.Builder builder = new AlertDialog.Builder(this);
+    			builder.setMessage("Are you sure you want to vote off?")
+    			       .setCancelable(false)
+    			       .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+    			           public void onClick(DialogInterface dialog, int id) {
+    			                vote(toVoteOff);
+    			           }
+    			       })
+    			       .setNegativeButton("No", new DialogInterface.OnClickListener() {
+    			           public void onClick(DialogInterface dialog, int id) {
+    			                dialog.cancel();
+    			           }
+    			       });
+    			AlertDialog alert = builder.create();
     			return true;
     		}
     		else {

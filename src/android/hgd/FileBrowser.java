@@ -22,6 +22,7 @@ package android.hgd;
 import java.io.File;
 
 import android.util.Log;
+import android.widget.Toast;
 
 public class FileBrowser
 {
@@ -59,7 +60,13 @@ public class FileBrowser
 		Log.i("", ""+(f.listFiles()==null));
 		Log.i("", ""+(f.list()==null));
 		Log.i("", ""+f.listFiles().length);
-		return f.listFiles();
+		File[] files = f.listFiles();
+		File[] filesAndUpDir= new File[files.length + 1];
+		for (int j = 0; j < files.length; j++) {
+			filesAndUpDir[j+1] = files[j];
+		}
+		filesAndUpDir[0] = new File(f.getParent());
+		return filesAndUpDir;
 	}
 	
 	public boolean contains(File[] f, String match) {
@@ -73,8 +80,12 @@ public class FileBrowser
 	
 	public boolean changeDirectory(String directory) {
 		File[] listing = listDirectory(new File(currentPath));
-		if (contains(listing, directory) && (new File(currentPath + "/" + directory).isDirectory())) {
+		if ((contains(listing, directory)) && (new File(currentPath + "/" + directory).isDirectory())) {
 			currentPath = currentPath + directory + "/";
+			return true;
+		}
+		else if (((new File(currentPath)).getParentFile() != null) && ((new File(currentPath)).getParentFile().getName().equals(directory)) && ((new File(currentPath)).getParentFile().isDirectory())) {
+			currentPath = (new File(currentPath)).getParent() + "/";
 			return true;
 		}
 		return false;
