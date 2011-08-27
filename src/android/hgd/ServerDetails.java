@@ -11,6 +11,14 @@ public class ServerDetails {
 		this.user = user;
 	}
 	
+	public static ServerDetails toServerDetails(String serialisedServerDetails) {
+		String user = serialisedServerDetails.split("@")[0];
+		String hostname = serialisedServerDetails.split("@")[1].split(":")[0];
+		String port = serialisedServerDetails.split("@")[1].split(":")[1];
+		
+		return new ServerDetails(hostname, port, user);
+	}
+	
 	public String getHostname() {
 		return this.hostname;
 	}

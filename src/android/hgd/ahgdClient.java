@@ -21,9 +21,12 @@ package android.hgd;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -33,8 +36,10 @@ import android.app.ListActivity;
 import android.app.TabActivity;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -83,6 +88,8 @@ public class ahgdClient extends TabActivity {
     /** Called when the activity is first created. */
 	private HGDClient jc;
 	
+	public static String SERVER_FILENAME = "hgd_server.config";
+	
 	//private String hostname;
 	//private String port;
 	//private String user;
@@ -106,11 +113,8 @@ public class ahgdClient extends TabActivity {
 	private Button addServer;
 	private ArrayList<ServerDetails> servers = new ArrayList<ServerDetails>();
 	
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        //setContentView(R.layout.main);
-        TabHost tabs = getTabHost();
+	public void createUI() {
+		TabHost tabs = getTabHost();
         jc = new HGDClient();
         
         this.getLayoutInflater().inflate(R.layout.main, tabs.getTabContentView(), true);
@@ -128,33 +132,28 @@ public class ahgdClient extends TabActivity {
         init_upload_tab();
         init_playlist_tab();
         init_servers_tab();
-                
-        /*AlertDialog.Builder alert = new AlertDialog.Builder(this);
-        alert.setTitle("host");
-        alert.setMessage("enter hostname:port");
+	}
+	
+	@Override
+	public void onConfigurationChanged(Configuration newConfig)
+	{
+	    super.onConfigurationChanged(newConfig);
+	    //setContentView(R.layout.main);
+	    //createUI();
+	}
+	
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        //setContentView(R.layout.main);
         
-        final EditText input = new EditText(this);
-        alert.setView(input);
+        File root = Environment.getExternalStorageDirectory();
+        if (!root.canWrite()){
+        	Toast.makeText(getApplicationContext(), "Cannot write to root", Toast.LENGTH_SHORT).show();
+        }
+        SERVER_FILENAME = (new File(root, SERVER_FILENAME)).getAbsolutePath();
         
-        alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-			
-			public void onClick(DialogInterface dialog, int which) {
-				hostname = input.getText().toString().split(":")[0];
-				port = input.getText().toString().split(":")[1];
-				connect();
-			}
-		});
-        
-        alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-			
-			public void onClick(DialogInterface dialog, int which) {
-				// TODO Auto-generated method stub
-				
-			}
-		});
-        
-        alert.show();*/
-        
+        createUI();
         /*
          * 127.0.0.1 gives connection refused:
          * See http://stackoverflow.com/questions/3497253/java-net-connectexception-connection-refused-android-emulator
@@ -207,6 +206,8 @@ public class ahgdClient extends TabActivity {
         serverlist.setOnItemClickListener(connectServer);
         serverlist.setOnItemLongClickListener(editServer);
         
+        readServerConfig();
+        resetServerAdapter();
     }
     
     private OnItemClickListener connectServer = new OnItemClickListener() {
@@ -226,6 +227,7 @@ public class ahgdClient extends TabActivity {
             	Log.e("ahgdc:jhgd", e.toString());
             }
         	connect(servers.get(position));
+        	promptPassword();
         }
     };
     
@@ -254,6 +256,8 @@ public class ahgdClient extends TabActivity {
 				String port = input.getText().toString().split("@")[1].split(":")[1];
 				
 				servers.add(new ServerDetails(hostname, port, user));
+				writeServerConfig();
+				resetServerAdapter();
 				
 			}
 		});
@@ -601,5 +605,62 @@ public class ahgdClient extends TabActivity {
     public void parseDetails() {
     	servers.clear();
     	servers.add(new ServerDetails("10.0.0.2", "6633", "test"));
+    }
+    
+    
+    // -- Server configuration
+    
+    public void writeServerConfig() {
+    	try {
+    		FileOutputStream os = new FileOutputStream(new File(SERVER_FILENAME));
+    		OutputStreamWriter out = new OutputStreamWriter(os);
+    		for (String line : convertServers(servers)) {
+    			out.write(line + "\n");
+    		}
+    		out.close();
+    	}
+    	catch (java.io.IOException e) {
+    		Toast.makeText(getApplicationContext(), "IOException in writeServerConfig: " + e.getMessage() + " | " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
+    		return;
+    	}
+    }
+    
+    public void readServerConfig() {
+    	servers = new ArrayList<ServerDetails>();
+    	try {
+    		File input = new File(SERVER_FILENAME);
+    		if (!input.exists()) {
+    			Toast.makeText(getApplicationContext(), "File does not exist: " + SERVER_FILENAME, Toast.LENGTH_SHORT).show();
+    			input.createNewFile();
+    		}
+    		if (!input.canRead()) {
+    			Toast.makeText(getApplicationContext(), "canRead = False: " + SERVER_FILENAME, Toast.LENGTH_SHORT).show();
+    			return;
+    		}
+    		if (!input.canWrite()) {
+    			Toast.makeText(getApplicationContext(), "canWrite = False: " + SERVER_FILENAME, Toast.LENGTH_SHORT).show();
+    			return;
+    		}
+    		if (!input.isFile()) {
+    			Toast.makeText(getApplicationContext(), "Not a file: " + SERVER_FILENAME, Toast.LENGTH_SHORT).show();
+    			return;
+    		}
+    		FileInputStream fis = new FileInputStream(input);
+    		InputStreamReader isr = new InputStreamReader(fis);
+    		BufferedReader in = new BufferedReader(isr);
+    	    String line;
+    	    while ((line = in.readLine()) != null) {
+    	    	  servers.add(ServerDetails.toServerDetails(line));
+    	    }
+    	    in.close();
+    	}
+    	catch (java.io.FileNotFoundException e) {
+    		Toast.makeText(getApplicationContext(), "FileNotFoundException in readServerConfig: " + e.getMessage() + " | " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
+    		return;
+    	}
+    	catch (java.io.IOException e) {
+    		Toast.makeText(getApplicationContext(), "IOException in readServerConfig: " + e.getMessage() + " | " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
+    		return;
+    	}
     }
 }
