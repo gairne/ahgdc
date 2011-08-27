@@ -21,23 +21,40 @@ package android.hgd;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.util.ArrayList;
+import java.util.HashMap;
 
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ListActivity;
+import android.app.TabActivity;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 import android.view.View;
+import android.view.View.OnClickListener;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.SimpleAdapter;
+import android.widget.Spinner;
+import android.widget.TabHost;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import android.hgd.ahgdConstants;
@@ -54,28 +71,203 @@ import jhgdc.library.EmptyPlaylistItem;
  * 
  * @author Matthew Mole
  */
-public class ahgdClient extends Activity {
+public class ahgdClient extends TabActivity {
     /** Called when the activity is first created. */
 	private HGDClient jc;
+	
+	public static String SERVER_FILENAME = "hgd_server.config";
+	
+	//private String hostname;
+	//private String port;
+	//private String user;
+	
+	private ServerDetails connectedTo;
+	
+	//filebrowser
+	private ListView filelist;
 	private FileBrowser f;
 	private String[] listItems = {};
-	private String[] test = {"1","2"};
 	private ArrayAdapter myAdapter;
-	private String hostname;
-	private String port;
-	private String username;
-	private String password;
 	
-	private ListView filelist;
+	//playlist
+	private ListView songlist;
+	private SimpleAdapter songAdapter;
+	
+	//servers
+	private ListView serverlist;
+	private TextView currentServer;
+	private ArrayAdapter<String> serverAdapter;
+	private Button addServer;
+	private ArrayList<ServerDetails> servers = new ArrayList<ServerDetails>();
+	
+	public void createUI() {
+		TabHost tabs = getTabHost();
+        jc = new HGDClient();
+        
+        this.getLayoutInflater().inflate(R.layout.main, tabs.getTabContentView(), true);
+        
+        Resources resources = getResources();
+        
+        TabHost.TabSpec t_upload = tabs.newTabSpec("filebrowser").setContent(R.id.filebrowser).setIndicator("Upload", resources.getDrawable(R.drawable.upload));
+        TabHost.TabSpec t_playlist = tabs.newTabSpec("playlist").setContent(R.id.playlist).setIndicator("Playlist", resources.getDrawable(R.drawable.playlist));
+        TabHost.TabSpec t_servers = tabs.newTabSpec("servers").setContent(R.id.serversframe).setIndicator("Servers", resources.getDrawable(R.drawable.servers));
+        
+        tabs.addTab(t_upload);
+        tabs.addTab(t_playlist);
+        tabs.addTab(t_servers);
+        
+        init_upload_tab();
+        init_playlist_tab();
+        init_servers_tab();
+	}
+	
+	@Override
+	public void onConfigurationChanged(Configuration newConfig)
+	{
+	    super.onConfigurationChanged(newConfig);
+	    //setContentView(R.layout.main);
+	    //createUI();
+	}
 	
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.main);
+        //setContentView(R.layout.main);
         
-        f = new FileBrowser();
+        File root = Environment.getExternalStorageDirectory();
+        if (!root.canWrite()){
+        	Toast.makeText(getApplicationContext(), "Cannot write to root", Toast.LENGTH_SHORT).show();
+        }
+        SERVER_FILENAME = (new File(root, SERVER_FILENAME)).getAbsolutePath();
         
-        filelist = (ListView) findViewById(R.id.filesystem);
+        createUI();
+        /*
+         * 127.0.0.1 gives connection refused:
+         * See http://stackoverflow.com/questions/3497253/java-net-connectexception-connection-refused-android-emulator
+         */
+    }
+    
+    public void init_playlist_tab() {
+    	songlist = (ListView) findViewById(R.id.playlist);
+    	songlist.setOnItemClickListener(new OnItemClickListener() {
+    		public void onItemClick(AdapterView parent, View v, int position, long id) {
+    			resetSongAdapter();
+    		}
+    	});
+    	
+    	resetSongAdapter();
+    	
+    	//String[] temp = new String[1];
+    	//temp[0] = "Click to refresh";
+    	
+    	ArrayList<HashMap<String, String>> songData = new ArrayList<HashMap<String, String>>();
+    	HashMap<String, String> map;
+    	
+    	
+        map = new HashMap<String, String>();
+        map.put("title", "Click to refresh");
+        map.put("artist", "");
+        map.put("user", "");
+        songData.add(map);
+    	
+    	//songAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, temp);
+    	songAdapter = new SimpleAdapter (this.getBaseContext(), songData, R.layout.playlistitem,
+                new String[] {"title", "artist", "user"}, new int[] {R.id.title, R.id.artist, R.id.user});
+        
+        songlist.setAdapter(songAdapter);
+    }
+    
+    public void init_servers_tab() {
+    	parseDetails();
+    	
+    	currentServer = (TextView) findViewById(R.id.currentserver);
+    	currentServer.setText("Not connected");
+    	
+    	serverlist = (ListView) findViewById(R.id.serverlist);
+        serverAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, convertServers(servers));
+        serverlist.setAdapter(serverAdapter);
+        
+        addServer = (Button) findViewById(R.id.serveradd);
+        addServer.setOnClickListener(addServerHandler);
+        
+        serverlist.setOnItemClickListener(connectServer);
+        serverlist.setOnItemLongClickListener(editServer);
+        
+        readServerConfig();
+        resetServerAdapter();
+    }
+    
+    private OnItemClickListener connectServer = new OnItemClickListener() {
+        public void onItemClick(AdapterView parent, View v, int position, long id)
+        {
+        	try {
+            	jc.disconnect(true);
+            	currentServer.setText("Not connected");
+            }
+            catch (IllegalStateException e) {
+            	//It's fine.
+            }
+            catch (IOException e) {
+            	Log.e("ahgdc:io", e.toString());
+            }
+            catch (JHGDException e) {
+            	Log.e("ahgdc:jhgd", e.toString());
+            }
+        	connect(servers.get(position));
+        	promptPassword();
+        }
+    };
+    
+    private OnItemLongClickListener editServer = new OnItemLongClickListener() {
+        public boolean onItemLongClick(AdapterView parent, View v, int position, long id)
+        {
+        	//prompt for edit or delete
+        	return true;
+        }
+    };
+
+    
+    public void promptForServer() {
+	    AlertDialog.Builder alert = new AlertDialog.Builder(this);
+	    alert.setTitle("host");
+	    alert.setMessage("enter user@hostname:port");
+	    
+	    final EditText input = new EditText(this);
+	    alert.setView(input);
+	    
+	    alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+			
+			public void onClick(DialogInterface dialog, int which) {
+				String user = input.getText().toString().split("@")[0];
+				String hostname = input.getText().toString().split("@")[1].split(":")[0];
+				String port = input.getText().toString().split("@")[1].split(":")[1];
+				
+				servers.add(new ServerDetails(hostname, port, user));
+				writeServerConfig();
+				resetServerAdapter();
+				
+			}
+		});
+	    
+	    alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+			public void onClick(DialogInterface dialog, int which) {
+
+			}
+		});
+	    
+	    alert.show();
+    }
+    
+    public Button.OnClickListener addServerHandler = new Button.OnClickListener() {
+        public void onClick(View v) {
+            promptForServer();
+        }
+    };
+    
+    public void init_upload_tab() {
+    	f = new FileBrowser();
+        
+        filelist = (ListView) findViewById(R.id.filebrowser);
         filelist.setOnItemClickListener(new OnItemClickListener() {
         	public void onItemClick(AdapterView parent, View v, int position,
         	long id) {
@@ -84,7 +276,7 @@ public class ahgdClient extends Activity {
         			Toast.makeText(parent.getContext(), "You changed dir " + listItems[position], Toast.LENGTH_SHORT).show();
         			listItems = FileBrowser.toStringArray(f.listDirectory());
         			//myAdapter.notifyDataSetChanged();
-        			resetAdapter();
+        			resetFileListAdapter();
         		}
         		else if (f.isValidToUpload(new File(f.currentPath + "/" + listItems[position]))) {
         			enqueue(f.currentPath + "/" + listItems[position]);
@@ -98,81 +290,121 @@ public class ahgdClient extends Activity {
         myAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, listItems);
         
         filelist.setAdapter(myAdapter);
-        
-        Log.i("ahgdc", "Example started");
-        
-        AlertDialog.Builder alert = new AlertDialog.Builder(this);
-        alert.setTitle("host");
-        alert.setMessage("enter hostname:port");
-        
-        final EditText input = new EditText(this);
-        alert.setView(input);
-        
-        alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-			
-			public void onClick(DialogInterface dialog, int which) {
-				hostname = input.getText().toString().split(":")[0];
-				port = input.getText().toString().split(":")[1];
-				connect();
-			}
-		});
-        
-        alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-			
-			public void onClick(DialogInterface dialog, int which) {
-				// TODO Auto-generated method stub
-				
-			}
-		});
-        
-        alert.show();
-        
-        AlertDialog.Builder alert2 = new AlertDialog.Builder(this);
-        alert2.setTitle("username");
-        alert2.setMessage("enter username:password");
-        
-        final EditText input2 = new EditText(this);
-        alert2.setView(input2);
-        
-        alert2.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-			
-			public void onClick(DialogInterface dialog, int which) {
-				username = input2.getText().toString().split(":")[0];
-				password = input2.getText().toString().split(":")[1];
-			}
-		});
-        
-        alert2.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-			
-			public void onClick(DialogInterface dialog, int which) {
-				// TODO Auto-generated method stub
-				
-			}
-		});
-        
-        alert2.show();
-        
-        /*
-         * 127.0.0.1 gives connection refused:
-         * See http://stackoverflow.com/questions/3497253/java-net-connectexception-connection-refused-android-emulator
-         */
     }
     
-    public void connect() {
-    	jc = new HGDClient();
+    public void resetServerAdapter() {
+    	serverAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, convertServers(servers));
+        serverlist.setAdapter(serverAdapter);
+    }
+    
+    public void resetFileListAdapter() {
+    	myAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, listItems);       
+        filelist.setAdapter(myAdapter);
+    }
+    
+    public void resetSongAdapter() {
+    	//String[] strlist;
+    	ArrayList<HashMap<String, String>> songData = new ArrayList<HashMap<String, String>>();
+    	HashMap<String, String> map;
+    	
+    	try {
+    		ArrayList<PlaylistItem> playlist = getPlaylist().getItems();
+    		
+    		if (playlist.isEmpty()) {
+    			map = new HashMap<String, String>();
+                map.put("title", "Nothing playing");
+                map.put("artist", "");
+                map.put("user", "");
+                songData.add(map);
+    		}
+    		else {
+    			//strlist = new String[playlist.size()];
+    			//int i = 0;
+            	for (PlaylistItem p : playlist) {
+            		//strlist[i] = p.getTitle();
+            		//i++;
+            		map = new HashMap<String, String>();
+                    map.put("title", p.getTitle());
+                    map.put("artist", p.getArtist());
+                    map.put("user", p.getUser());
+                    songData.add(map);
+            	}
+    		}
+    	}
+    	catch (NullPointerException e) {
+    		//strlist = new String[1];
+        	//strlist[0] = "Nothing playing (exception)";
+    		map = new HashMap<String, String>();
+            map.put("title", "Click to refresh");
+            map.put("artist", "");
+            map.put("user", "");
+            songData.add(map);
+    	}
+    	
+    	//songAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, temp);
+    	songAdapter = new SimpleAdapter (this.getBaseContext(), songData, R.layout.playlistitem,
+                new String[] {"title", "artist", "user"}, new int[] {R.id.title, R.id.artist, R.id.user});
+        
+        songlist.setAdapter(songAdapter);
+    }
+    
+    public void log(String tag, String message) {
+    	Log.i(tag, message);
+    }
+    
+    //TODO: SECURE ENTRY
+    public void promptPassword() {
+    	AlertDialog.Builder alert = new AlertDialog.Builder(this);
+	    alert.setTitle("password");
+	    alert.setMessage("enter password");
+	    
+	    final EditText input = new EditText(this);
+	    alert.setView(input);
+	    
+	    alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+			
+			public void onClick(DialogInterface dialog, int which) {
+				String password = input.getText().toString();
+				login(password);
+			}
+		});
+	    
+	    alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+			public void onClick(DialogInterface dialog, int which) {
+
+			}
+		});
+	    
+	    alert.show();
+    }
+    
+    public void login(String password) {
+    	try {
+	    	Log.i("ahgdc", "Logging in with username " + this.connectedTo.getUser() + " and password " + password);
+	        jc.login(this.connectedTo.getUser(), password);
+    	}
+    	catch (IOException e) {
+        	Log.e("ahgdc:io", e.toString());
+        }
+        catch (JHGDException e) {
+        	Log.e("ahgdc:jhgd", e.toString());
+        }
+    	
+        /*Log.i("ahgdc", "Playlist items");
+        String[] playlist = jc.requestPlaylist();
+        for (String item : playlist) {
+        	Log.i("ahgdc", item);
+        }*/
+    }
+    
+    //TODO: 
+    // THE FOLLOWING METHODS LIAISE WITH libjhgdc:HGDClient IN ORDER TO PROVIDE HGDC FUNCTIONALITY
+    public void connect(ServerDetails server) {
         try {
-        	Log.i("ahgdc", "Attempting to connect to " + hostname + ":" + port);
-	        jc.connect(hostname, Integer.parseInt(port)); 
-	        Log.i("ahgdc", "Logging in with username " + username + " and password " + password);
-	        jc.login(username, password);
-	        Log.i("ahgdc", "Playlist items");
-	        String[] playlist = jc.requestPlaylist();
-	        for (String item : playlist) {
-	        	Log.i("ahgdc", item);
-	        }
-	        Log.i("ahgdc", "Disconnecting");
-	        //jc.disconnect(true);
-	        Toast.makeText(getApplicationContext(), "Connected", Toast.LENGTH_SHORT).show();
+        	Log.i("ahgdc", "Attempting to connect to " + server.getHostname() + ":" + server.getPort());
+	        jc.connect(server.getHostname(), Integer.parseInt(server.getPort()));
+	        currentServer.setText(server.toString());
+	        this.connectedTo = server;
 	    }
         catch (IOException e) {
         	Toast.makeText(getApplicationContext(), "connect IOException", Toast.LENGTH_SHORT).show();
@@ -182,28 +414,8 @@ public class ahgdClient extends Activity {
         	Toast.makeText(getApplicationContext(), "connect JHGDCException", Toast.LENGTH_SHORT).show();
         	Log.e("ahgdc:jhgd", e.toString());
         }
-        catch (IllegalStateException e) {
-        	Toast.makeText(getApplicationContext(), "connect IllegalStateException", Toast.LENGTH_SHORT).show();
-        	Log.e("ahgdc:is", e.toString());
-        }
-        catch (NumberFormatException e) {
-        	Toast.makeText(getApplicationContext(), "connect NumberFormatException", Toast.LENGTH_SHORT).show();
-        	Log.e("ahgdc:nf", e.toString());
-        }
-        
-        Log.i("ahgdc", "Example stopped");
     }
     
-    public void resetAdapter() {
-    	myAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, listItems);       
-        filelist.setAdapter(myAdapter);
-    }
-    
-    public void log(String tag, String message) {
-    	Log.i(tag, message);
-    }
-    
-    // THE FOLLOWING METHODS LIAISE WITH libjhgdc:HGDClient IN ORDER TO PROVIDE HGDC FUNCTIONALITY
     
     /**
      * Vote off the current song
@@ -323,16 +535,22 @@ public class ahgdClient extends Activity {
     	}
     	catch (IllegalArgumentException e) {
     		Toast.makeText(this.getBaseContext(), R.string.IAE, Toast.LENGTH_SHORT).show();
+    		Log.i("", "IAE");
     	}
     	catch (IllegalStateException e) {
     		Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT).show();
+    		Log.i("", "ISE");
     	}
     	catch (IOException e) {
     		Toast.makeText(this.getBaseContext(), R.string.IOE, Toast.LENGTH_SHORT).show();
+    		Log.i("", "IOE");
     	}
     	catch (JHGDException e) {
     		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT).show();
+    		Log.i("", "JHGDE");
     	}
+    	
+    	Log.i("","null here");
     	return null;
     }
     
@@ -360,7 +578,77 @@ public class ahgdClient extends Activity {
     	return null;
     }
     
+    public void saveDetails() {
+    	
+    }
+    
+    public String[] convertServers(ArrayList<ServerDetails> arraylist) {
+    	String[] toRet = new String[arraylist.size()];
+    	for (int i = 0; i < arraylist.size(); i++) {
+    		toRet[i] = arraylist.get(i).toString();
+    	}
+    	return toRet;
+    }
+    
+    public void parseDetails() {
+    	servers.clear();
+    	servers.add(new ServerDetails("10.0.0.2", "6633", "test"));
+    }
     
     
+    // -- Server configuration
     
+    public void writeServerConfig() {
+    	try {
+    		FileOutputStream os = new FileOutputStream(new File(SERVER_FILENAME));
+    		OutputStreamWriter out = new OutputStreamWriter(os);
+    		for (String line : convertServers(servers)) {
+    			out.write(line + "\n");
+    		}
+    		out.close();
+    	}
+    	catch (java.io.IOException e) {
+    		Toast.makeText(getApplicationContext(), "IOException in writeServerConfig: " + e.getMessage() + " | " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
+    		return;
+    	}
+    }
+    
+    public void readServerConfig() {
+    	servers = new ArrayList<ServerDetails>();
+    	try {
+    		File input = new File(SERVER_FILENAME);
+    		if (!input.exists()) {
+    			Toast.makeText(getApplicationContext(), "File does not exist: " + SERVER_FILENAME, Toast.LENGTH_SHORT).show();
+    			input.createNewFile();
+    		}
+    		if (!input.canRead()) {
+    			Toast.makeText(getApplicationContext(), "canRead = False: " + SERVER_FILENAME, Toast.LENGTH_SHORT).show();
+    			return;
+    		}
+    		if (!input.canWrite()) {
+    			Toast.makeText(getApplicationContext(), "canWrite = False: " + SERVER_FILENAME, Toast.LENGTH_SHORT).show();
+    			return;
+    		}
+    		if (!input.isFile()) {
+    			Toast.makeText(getApplicationContext(), "Not a file: " + SERVER_FILENAME, Toast.LENGTH_SHORT).show();
+    			return;
+    		}
+    		FileInputStream fis = new FileInputStream(input);
+    		InputStreamReader isr = new InputStreamReader(fis);
+    		BufferedReader in = new BufferedReader(isr);
+    	    String line;
+    	    while ((line = in.readLine()) != null) {
+    	    	  servers.add(ServerDetails.toServerDetails(line));
+    	    }
+    	    in.close();
+    	}
+    	catch (java.io.FileNotFoundException e) {
+    		Toast.makeText(getApplicationContext(), "FileNotFoundException in readServerConfig: " + e.getMessage() + " | " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
+    		return;
+    	}
+    	catch (java.io.IOException e) {
+    		Toast.makeText(getApplicationContext(), "IOException in readServerConfig: " + e.getMessage() + " | " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
+    		return;
+    	}
+    }
 }
