@@ -79,7 +79,7 @@ public class ahgdClient extends TabActivity implements ThreadListener {
 	private ListView filelist;
 	private FileBrowser f;
 	private String[] listItems = {};
-	private ArrayAdapter myAdapter;
+	private ArrayAdapter myAdapter; //TODO fix this warning
 	
 	//playlist
 	private ArrayList<HashMap<String, String>> songData;
