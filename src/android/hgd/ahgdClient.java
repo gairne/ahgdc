@@ -365,7 +365,7 @@ public class ahgdClient extends TabActivity implements ThreadListener {
 		//active = true;
     	//connthread = new ConnectionThread(handler, intendedServer, entry);
     	//connthread.start();
-    	Toast.makeText(getApplicationContext(), server.getHostname(), Toast.LENGTH_SHORT).show();
+    	//Toast.makeText(getApplicationContext(), server.getHostname(), Toast.LENGTH_SHORT).show();
     	worker.connectToServer(server, entry);
     }
  
