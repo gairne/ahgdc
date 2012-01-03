@@ -37,7 +37,6 @@ import android.content.res.Resources;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
-import android.os.Message;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -59,24 +58,21 @@ import jhgdc.library.HGDClient;
 import jhgdc.library.JHGDException;
 import jhgdc.library.Playlist;
 import jhgdc.library.PlaylistItem;
-import android.hgd.jobs.ConnectionThread;
-import android.hgd.jobs.UploadThread;
 
 /**
  * This is the main entrypoint into the application.
  * 
  * @author Matthew Mole
  */
-public class ahgdClient extends TabActivity {
+public class ahgdClient extends TabActivity implements ThreadListener {
     /** Called when the activity is first created. */
 	public static HGDClient jc;
 	
 	public static String SERVER_FILENAME = "hgd_server.config";
 	
-	private boolean active = false;
-	private ConnectionThread connthread;
-	private UploadThread uploadthread;
-	private ServerDetails intendedServer;
+	private Handler handler;
+	
+	private WorkerThread worker;
 	
 	//Temporary state variables
 	private String toVoteOff;
@@ -106,6 +102,9 @@ public class ahgdClient extends TabActivity {
 	public void createUI() {
 		TabHost tabs = getTabHost();
         jc = new HGDClient();
+        handler = new Handler();
+        worker = new WorkerThread(this);
+        worker.start();
         
         this.getLayoutInflater().inflate(R.layout.main, tabs.getTabContentView(), true);
         
@@ -308,12 +307,7 @@ public class ahgdClient extends TabActivity {
 		}
     }
     
-    private void serverlistClicked(int position) {
-    	if (active) {
-    		Toast.makeText(getApplicationContext(), "Already busy", Toast.LENGTH_SHORT).show();
-    	}
-    	intendedServer = servers.get(position);
-    	
+    private void serverlistClicked(final int position) {
     	AlertDialog.Builder alert = new AlertDialog.Builder(this);
 	    alert.setTitle("password");
 	    alert.setMessage("enter password");
@@ -324,7 +318,7 @@ public class ahgdClient extends TabActivity {
 	    alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
 			
 			public void onClick(DialogInterface dialog, int which) {
-				connectServer(input.getText().toString());
+				connectServer(servers.get(position), input.getText().toString());
 			}
 		});
 	    
@@ -389,8 +383,9 @@ public class ahgdClient extends TabActivity {
 			resetFileListAdapter();
 		}
 		else if (f.isValidToUpload(new File(f.currentPath + "/" + listItems[position]))) {
-			uploadthread = new UploadThread(handler, f.currentPath + "/" + listItems[position]);
-			uploadthread.start();
+			worker.uploadFile(f.currentPath + "/" + listItems[position]);
+			//uploadthread = new UploadThread(handler, f.currentPath + "/" + listItems[position]);
+			//uploadthread.start();
 		}
     }
     
@@ -413,58 +408,13 @@ public class ahgdClient extends TabActivity {
 		resetServerAdapter();
     }
     
-    private void connectServer(String entry) {
-		active = true;
-    	connthread = new ConnectionThread(handler, intendedServer, entry);
-    	connthread.start();
+    private void connectServer(ServerDetails server, String entry) {
+		//active = true;
+    	//connthread = new ConnectionThread(handler, intendedServer, entry);
+    	//connthread.start();
+    	worker.connectToServer(server, entry);
     }
-    
-    //
-    // Incoming messages from worker threads
-    //
-    
-    private Handler handler = new Handler() {
-    	@Override
-    	public void handleMessage(Message msg) {
-    		switch (msg.arg1) {
-    		case ahgdConstants.THREAD_CONNECTION_SUCCESS: {
-    			currentServer.setText(intendedServer.getHostname());
-    			Toast.makeText(getApplicationContext(), "Connected Successfully", Toast.LENGTH_SHORT).show();
-    			active = false;
-    			break;
-    		}
-    		case ahgdConstants.THREAD_CONNECTION_IO_FAIL: {
-    			currentServer.setText("Not currently connected");
-    			Toast.makeText(getApplicationContext(), "Failed to connect (IO)", Toast.LENGTH_SHORT).show();
-    			active = false;
-    			break;
-    		}
-    		case ahgdConstants.THREAD_CONNECTION_JHGDC_FAIL: {
-    			currentServer.setText("Not currently connected");
-    			Toast.makeText(getApplicationContext(), "Failed to connect (JHGDC)", Toast.LENGTH_SHORT).show();
-    			active = false;
-    			break;
-    		}
-    		case ahgdConstants.THREAD_CONNECTION_PWIO_FAIL: {
-    			currentServer.setText("Not currently connected");
-    			Toast.makeText(getApplicationContext(), "Failed to connect (password IO)", Toast.LENGTH_SHORT).show();
-    			active = false;
-    			break;
-    		}
-    		case ahgdConstants.THREAD_CONNECTION_PWJHGDC_FAIL: {
-    			currentServer.setText("Not currently connected");
-    			Toast.makeText(getApplicationContext(), "Failed to connect (password JHGDC)", Toast.LENGTH_SHORT).show();
-    			active = false;
-    			break;
-    		}
-    		//
-    		case ahgdConstants.THREAD_UPLOAD_SUCCESS: {
-    			break;
-    		}
-    		}
-    	}
-    };
-    
+ 
     public void log(String tag, String message) {
     	Log.i(tag, message);
     }
@@ -650,4 +600,57 @@ public class ahgdClient extends TabActivity {
     		return;
     	}
     }
+
+    //TODO: Use strings.xml text
+    /**
+     * If the worker thread needs to send a message to the User Interface thread, it calls the notify function.
+     * THIS IS ON THE WORKER THREADS STACK ON EXECUTION, not the user interface thread. Changing the UI from the
+     * worker thread is dangerous, therefore we create a runnable and give it to the User Interface to execute.
+     */
+	public void notify(final int message, final String extraInformation) {
+		handler.post(new Runnable() {
+			public void run() {
+				switch (message) {
+				case ahgdConstants.THREAD_CONNECTION_SUCCESS: {
+					currentServer.setText(extraInformation);
+					Toast.makeText(getApplicationContext(), "Connected Successfully", Toast.LENGTH_SHORT).show();
+					break;
+				}
+				case ahgdConstants.THREAD_UPLOAD_SUCCESS: {
+					Toast.makeText(getApplicationContext(), "Uploaded Successfully", Toast.LENGTH_SHORT).show();
+					break;
+				}
+				case ahgdConstants.THREAD_CONNECTION_GENFAIL:
+				case ahgdConstants.THREAD_CONNECTION_IOFAIL: {
+					currentServer.setText("Not currently connected");
+					Toast.makeText(getApplicationContext(), "General error whilst connecting", Toast.LENGTH_SHORT).show();
+					break;
+				}
+				case ahgdConstants.THREAD_CONNECTION_PASSWORD_GENFAIL:
+				case ahgdConstants.THREAD_CONNECTION_PASSWORD_IOFAIL: {
+					currentServer.setText("Not currently connected");
+					Toast.makeText(getApplicationContext(), "General error whilst logging in", Toast.LENGTH_SHORT).show();
+					break;
+				}
+				case ahgdConstants.THREAD_UPLOAD_FILENOTFOUND: {
+					Toast.makeText(getApplicationContext(), "File not found", Toast.LENGTH_SHORT).show();
+					break;
+				}
+				case ahgdConstants.THREAD_UPLOAD_GENFAIL: 
+				case ahgdConstants.THREAD_UPLOAD_IOFAIL: {
+					Toast.makeText(getApplicationContext(), "General error whilst uploading", Toast.LENGTH_SHORT).show();
+					break;
+				}
+				case ahgdConstants.THREAD_UPLOAD_NOTAUTH: {
+					Toast.makeText(getApplicationContext(), "Not logged in", Toast.LENGTH_SHORT).show();
+					break;
+				}
+				case ahgdConstants.THREAD_UPLOAD_NOTCONNECTED: {
+					Toast.makeText(getApplicationContext(), "Not connected", Toast.LENGTH_SHORT).show();
+					break;
+				}
+				}
+			}
+		});
+	}
 }

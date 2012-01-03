@@ -23,6 +23,7 @@ public class WorkerThread extends Thread {
 		try {
 			Looper.prepare();
 			
+			//The worker thread receives work by receiving runnables through this handler.
 			workerHandler = new Handler();
 			
 			Looper.loop();
@@ -31,6 +32,12 @@ public class WorkerThread extends Thread {
 		} 
 	}
 	
+	/**
+	 * This is called by the User Interface thread and sends a runnable to the worker thread to be executed.
+	 * 
+	 * @param server
+	 * @param password
+	 */
 	public synchronized void connectToServer(final ServerDetails server, final String password) {
 		workerHandler.post(new Runnable() {
 			public void run() {
@@ -81,6 +88,12 @@ public class WorkerThread extends Thread {
 		});
 	}
 	
+	/**
+	 * This is called by the User Interface thread and sends a runnable to the worker thread to be executed.
+	 * 
+	 * @param server
+	 * @param password
+	 */
 	public synchronized void uploadFile(final String filename) {
 		workerHandler.post(new Runnable() {
 			public void run() {
