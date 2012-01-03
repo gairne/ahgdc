@@ -30,29 +30,25 @@ import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.ListActivity;
 import android.app.TabActivity;
 import android.content.DialogInterface;
-import android.content.Intent;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ArrayAdapter;
-import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
-import android.widget.Spinner;
 import android.widget.TabHost;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -60,11 +56,11 @@ import android.widget.Toast;
 import android.hgd.ahgdConstants;
 
 import jhgdc.library.HGDClient;
-import jhgdc.library.HGDConsts;
 import jhgdc.library.JHGDException;
 import jhgdc.library.Playlist;
 import jhgdc.library.PlaylistItem;
-import jhgdc.library.EmptyPlaylistItem;
+import android.hgd.jobs.ConnectionThread;
+import android.hgd.jobs.UploadThread;
 
 /**
  * This is the main entrypoint into the application.
@@ -73,14 +69,20 @@ import jhgdc.library.EmptyPlaylistItem;
  */
 public class ahgdClient extends TabActivity {
     /** Called when the activity is first created. */
-	private HGDClient jc;
+	public static HGDClient jc;
 	
 	public static String SERVER_FILENAME = "hgd_server.config";
 	
 	private ServerDetails connectedTo;
 	
+	private boolean active = false;
+	private ConnectionThread connthread;
+	private UploadThread uploadthread;
+	private ServerDetails intendedServer;
+	
 	//Temporary state variables
 	private String toVoteOff;
+	private int toServerDelete;
 	
 	//filebrowser
 	private ListView filelist;
@@ -142,6 +144,64 @@ public class ahgdClient extends TabActivity {
          * 127.0.0.1 gives connection refused:
          * See http://stackoverflow.com/questions/3497253/java-net-connectexception-connection-refused-android-emulator
          */
+    } 
+    
+    private Handler handler = new Handler() {
+    	@Override
+    	public void handleMessage(Message msg) {
+    		switch (msg.arg1) {
+    		case ahgdConstants.THREAD_CONNECTION_SUCCESS: {
+    			currentServer.setText(intendedServer.getHostname());
+    			Toast.makeText(getApplicationContext(), "Connected Successfully", Toast.LENGTH_SHORT).show();
+    			active = false;
+    			break;
+    		}
+    		case ahgdConstants.THREAD_CONNECTION_IO_FAIL: {
+    			currentServer.setText("Not currently connected");
+    			Toast.makeText(getApplicationContext(), "Failed to connect (IO)", Toast.LENGTH_SHORT).show();
+    			active = false;
+    			break;
+    		}
+    		case ahgdConstants.THREAD_CONNECTION_JHGDC_FAIL: {
+    			currentServer.setText("Not currently connected");
+    			Toast.makeText(getApplicationContext(), "Failed to connect (JHGDC)", Toast.LENGTH_SHORT).show();
+    			active = false;
+    			break;
+    		}
+    		case ahgdConstants.THREAD_CONNECTION_PWIO_FAIL: {
+    			currentServer.setText("Not currently connected");
+    			Toast.makeText(getApplicationContext(), "Failed to connect (password IO)", Toast.LENGTH_SHORT).show();
+    			active = false;
+    			break;
+    		}
+    		case ahgdConstants.THREAD_CONNECTION_PWJHGDC_FAIL: {
+    			currentServer.setText("Not currently connected");
+    			Toast.makeText(getApplicationContext(), "Failed to connect (password JHGDC)", Toast.LENGTH_SHORT).show();
+    			active = false;
+    			break;
+    		}
+    		//
+    		case ahgdConstants.THREAD_UPLOAD_SUCCESS: {
+    			break;
+    		}
+    		}
+    	}
+    };
+    
+    public void startConnectionThread(String password) {
+    	active = true;
+    	connthread = new ConnectionThread(handler, intendedServer, password);
+    	connthread.start();
+    }
+    
+    public void startUploadThread(String filename) {
+    	uploadthread = new UploadThread(handler, filename);
+    	if (f.isValidToUpload(new File(filename))) {
+			uploadthread.start();
+		}
+    	else {
+    		Toast.makeText(getApplicationContext(), "Invalid file", Toast.LENGTH_SHORT).show();
+    	}
     }
     
     public void init_playlist_tab() {
@@ -152,6 +212,7 @@ public class ahgdClient extends TabActivity {
     				resetSongAdapter();
     			}
     			else {
+    				//if (songlist.getItemAtPosition(position).
     				if (songData.get(position).get("title").equals("Refresh")) {
     					resetSongAdapter();
     				}
@@ -203,10 +264,22 @@ public class ahgdClient extends TabActivity {
         resetServerAdapter();
     }
     
+    //promptPassword() => startConnectionThread(handler, ServerDetails, password)
+    
+    //This should now do the ConnectionThread thing
     private OnItemClickListener connectServer = new OnItemClickListener() {
         public void onItemClick(AdapterView parent, View v, int position, long id)
         {
-        	try {
+        	if (active) {
+        		Toast.makeText(getApplicationContext(), "Already busy", Toast.LENGTH_SHORT).show();
+        	}
+        	intendedServer = servers.get(position);
+        	promptPassword();
+        	//active = true;
+        	//connthread = new ConnectionThread(handler, servers.get(position));
+        	
+        	
+        	/*try {
             	jc.disconnect(true);
             	currentServer.setText("Not connected");
             }
@@ -220,18 +293,39 @@ public class ahgdClient extends TabActivity {
             	Log.e("ahgdc:jhgd", e.toString());
             }
         	connect(servers.get(position));
-        	promptPassword();
+        	promptPassword();*/
         }
     };
     
     private OnItemLongClickListener editServer = new OnItemLongClickListener() {
         public boolean onItemLongClick(AdapterView parent, View v, int position, long id)
         {
-        	//prompt for edit or delete
+        	Toast.makeText(getApplicationContext(), "Deleting server", Toast.LENGTH_LONG).show();
+        	toServerDelete = position;
+        	deleteServer();
         	return true;
         }
     };
 
+    public void deleteServer() {
+    	AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		builder.setMessage("Are you sure you want to delete the server?")
+		       .setCancelable(false)
+		       .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+		           public void onClick(DialogInterface dialog, int id) {
+		                servers.remove(toServerDelete);
+		                writeServerConfig();
+		                resetServerAdapter();
+		           }
+		       })
+		       .setNegativeButton("No", new DialogInterface.OnClickListener() {
+		           public void onClick(DialogInterface dialog, int id) {
+		                dialog.cancel();
+		           }
+		       });
+		AlertDialog alert = builder.create();
+		alert.show();
+    }
     
     public void promptForServer() {
 	    AlertDialog.Builder alert = new AlertDialog.Builder(this);
@@ -286,7 +380,8 @@ public class ahgdClient extends TabActivity {
         			resetFileListAdapter();
         		}
         		else if (f.isValidToUpload(new File(f.currentPath + "/" + listItems[position]))) {
-        			enqueue(f.currentPath + "/" + listItems[position]);
+        			startUploadThread(f.currentPath + "/" + listItems[position]);
+        			//enqueue(f.currentPath + "/" + listItems[position]);
         		}
         	}
         	});
@@ -311,7 +406,8 @@ public class ahgdClient extends TabActivity {
     
     public void resetSongAdapter() {
     	//String[] strlist;
-    	ArrayList<HashMap<String, String>> songData = new ArrayList<HashMap<String, String>>();
+    	//ArrayList<HashMap<String, String>> songData = new ArrayList<HashMap<String, String>>();
+    	songData = new ArrayList<HashMap<String, String>>();
     	HashMap<String, String> map;
     	
     	try {
@@ -384,7 +480,10 @@ public class ahgdClient extends TabActivity {
 			
 			public void onClick(DialogInterface dialog, int which) {
 				String password = input.getText().toString();
-				login(password);
+				//login(password);
+				//currentServer.setText(intendedServer.getHostname());
+    			//Toast.makeText(getApplicationContext(), "Connected DID WE? Successfully", Toast.LENGTH_SHORT).show();
+				startConnectionThread(password);
 			}
 		});
 	    
@@ -397,6 +496,7 @@ public class ahgdClient extends TabActivity {
 	    alert.show();
     }
     
+    //not used
     public void login(String password) {
     	try {
 	    	Log.i("ahgdc", "Logging in with username " + this.connectedTo.getUser() + " and password " + password);
@@ -459,6 +559,7 @@ public class ahgdClient extends TabActivity {
     			           }
     			       });
     			AlertDialog alert = builder.create();
+    			alert.show();
     			return true;
     		}
     		else {
@@ -568,6 +669,8 @@ public class ahgdClient extends TabActivity {
     	catch (IllegalArgumentException e) {
     		Toast.makeText(this.getBaseContext(), R.string.IAE, Toast.LENGTH_SHORT).show();
     		Log.i("", "IAE");
+    		Toast.makeText(this.getBaseContext(), e.toString(), Toast.LENGTH_SHORT).show();
+    		Log.i("ahgdc", e.toString());
     	}
     	catch (IllegalStateException e) {
     		Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT).show();

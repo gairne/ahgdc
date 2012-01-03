@@ -22,12 +22,10 @@ package android.hgd;
 import java.io.File;
 
 import android.util.Log;
-import android.widget.Toast;
 
 public class FileBrowser
 {
 	public String currentPath = "/";
-	private File[] currentPathFiles = {};
 	
 	public FileBrowser() {
 		

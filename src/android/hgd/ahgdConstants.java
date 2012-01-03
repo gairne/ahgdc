@@ -23,4 +23,18 @@ public final class ahgdConstants {
 
 	public static final boolean AHGD_SUCCESS = true;
 	public static final boolean AHGD_FAIL = false;
+	
+	public static final int THREAD_CONNECTION_SUCCESS = 0;
+	public static final int THREAD_CONNECTION_IO_FAIL = 1;
+	public static final int THREAD_CONNECTION_JHGDC_FAIL = 2;
+	public static final int THREAD_CONNECTION_PWIO_FAIL = 3;
+	public static final int THREAD_CONNECTION_PWJHGDC_FAIL = 4;
+	
+	public static final int THREAD_UPLOAD_SUCCESS = 10;
+	public static final int THREAD_UPLOAD_FILENOTFOUND = 11;
+	public static final int THREAD_UPLOAD_ISE_NOTCONNECTED = 12;
+	public static final int THREAD_UPLOAD_ISE_NOTAUTH = 13;
+	public static final int THREAD_UPLOAD_FAIL = 14;
+	public static final int THREAD_UPLOAD_IO = 15;
+	public static final int THREAD_UPLOAD_JHGDC = 16;
 }
