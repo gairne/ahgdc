@@ -1,3 +1,22 @@
+/*
+ * Copyright 2012  Matthew Mole <code@gairne.co.uk>, Carlos Eduardo da Silva <kaduardo@gmail.com>
+ * 
+ * This file is part of ahgdc.
+ * 
+ * ahgdc is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * ahgdc is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with ahgdc.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 package android.hgd;
 
 import java.io.File;
@@ -5,10 +24,10 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 
 import jhgdc.library.JHGDException;
+import jhgdc.library.Playlist;
 
 import android.os.Handler;
 import android.os.Looper;
-import android.os.Message;
 
 public class WorkerThread extends Thread {
 	private ThreadListener uiThreadCallback;
@@ -97,8 +116,6 @@ public class WorkerThread extends Thread {
 	public synchronized void uploadFile(final String filename) {
 		workerHandler.post(new Runnable() {
 			public void run() {
-				Message msg = Message.obtain();
-				
 				try {
 		    		ahgdClient.jc.requestQueue(new File(filename));
 		    	}
@@ -134,4 +151,83 @@ public class WorkerThread extends Thread {
 		});
 	}
 	
+	/**
+	 * This is called by the User Interface thread and sends a runnable to the worker thread to be executed.
+	 * 
+	 * @param server
+	 * @param password
+	 */
+	public synchronized void getPlaylist() {
+		workerHandler.post(new Runnable() {
+			public void run() {
+				try {
+		    		Playlist p = ahgdClient.jc.getPlaylist();
+		    		uiThreadCallback.notifyPlaylist(p);
+		    	}
+		    	catch (IllegalArgumentException e) {
+		    		uiThreadCallback.notify(ahgdConstants.THREAD_PLAYLIST_GENFAIL, e.toString());
+		    		return;
+		    	}
+		    	catch (IllegalStateException e) {
+		    		uiThreadCallback.notify(ahgdConstants.THREAD_PLAYLIST_GENFAIL, e.toString());
+			    	return;
+		    	}
+		    	catch (IOException e) {
+		    		uiThreadCallback.notify(ahgdConstants.THREAD_PLAYLIST_IOFAIL, e.toString());
+		    		return;
+		    	}
+		    	catch (JHGDException e) {
+		    		uiThreadCallback.notify(ahgdConstants.THREAD_PLAYLIST_GENFAIL, e.toString());
+		    		return;
+		    	}
+				
+		    	uiThreadCallback.notify(ahgdConstants.THREAD_PLAYLIST_SUCCESS, "");
+			}
+		});
+	}
+	
+	/**
+	 * This is called by the User Interface thread and sends a runnable to the worker thread to be executed.
+	 * 
+	 * @param server
+	 * @param password
+	 */
+	public synchronized void voteSong(final String trackID) {
+		workerHandler.post(new Runnable() {
+			public void run() {
+				try {
+		    		//TODO: check trackId is valid
+		    		ahgdClient.jc.requestVoteOff(trackID);
+		    	}
+		    	catch (IllegalArgumentException e) {
+		    		uiThreadCallback.notify(ahgdConstants.THREAD_VOTING_GENFAIL, e.toString());
+		    		return;
+		    	}
+		    	catch (IllegalStateException e) {
+		    		if (e.getMessage().equals("Client not connected")) {
+		    			uiThreadCallback.notify(ahgdConstants.THREAD_VOTING_NOTCONNECTED, e.toString());
+			    		return;
+		    		}
+		    		else if (e.getMessage().equals("Client not authenticated")) {
+		    			uiThreadCallback.notify(ahgdConstants.THREAD_VOTING_NOTAUTH, e.toString());
+			    		return;
+		    		}
+		    		else {
+		    			uiThreadCallback.notify(ahgdConstants.THREAD_VOTING_GENFAIL, e.toString());
+			    		return;
+		    		}
+		    	}
+		    	catch (IOException e) {
+		    		uiThreadCallback.notify(ahgdConstants.THREAD_VOTING_IOFAIL, e.toString());
+		    		return;
+		    	}
+		    	catch (JHGDException e) {
+		    		uiThreadCallback.notify(ahgdConstants.THREAD_VOTING_GENFAIL, e.toString());
+		    		return;
+		    	}
+				
+		    	uiThreadCallback.notify(ahgdConstants.THREAD_VOTING_SUCCESS, "");
+			}
+		});
+	}
 }

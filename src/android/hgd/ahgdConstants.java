@@ -1,5 +1,5 @@
 /*
- * Copyright 2011  Matthew Mole <code@gairne.co.uk>, Carlos Eduardo da Silva <kaduardo@gmail.com>
+ * Copyright 2012  Matthew Mole <code@gairne.co.uk>, Carlos Eduardo da Silva <kaduardo@gmail.com>
  * 
  * This file is part of ahgdc.
  * 
@@ -36,4 +36,14 @@ public final class ahgdConstants {
 	public static final int THREAD_UPLOAD_NOTAUTH = 13;
 	public static final int THREAD_UPLOAD_GENFAIL = 14;
 	public static final int THREAD_UPLOAD_IOFAIL = 15;
+	
+	public static final int THREAD_VOTING_GENFAIL = 20;
+	public static final int THREAD_VOTING_NOTCONNECTED = 21;
+	public static final int THREAD_VOTING_NOTAUTH = 22;
+	public static final int THREAD_VOTING_IOFAIL = 23;
+	public static final int THREAD_VOTING_SUCCESS = 24;
+	
+	public static final int THREAD_PLAYLIST_GENFAIL = 30;
+	public static final int THREAD_PLAYLIST_IOFAIL = 31;
+	public static final int THREAD_PLAYLIST_SUCCESS = 32;
 }

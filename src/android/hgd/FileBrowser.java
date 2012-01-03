@@ -1,5 +1,5 @@
 /*
- * Copyright 2011  Matthew Mole <code@gairne.co.uk>, Carlos Eduardo da Silva <kaduardo@gmail.com>
+ * Copyright 2012  Matthew Mole <code@gairne.co.uk>, Carlos Eduardo da Silva <kaduardo@gmail.com>
  * 
  * This file is part of ahgdc.
  * 
@@ -21,83 +21,66 @@ package android.hgd;
 
 import java.io.File;
 
-import android.util.Log;
-
 public class FileBrowser
 {
-	public String currentPath = "/";
+	private String currentPath = "/";
 	
-	public FileBrowser() {
-		
-	}
+	public static final int NO_ACTION = 0;
+	public static final int VALID_TO_UPLOAD = 1;
+	public static final int DIRECTORY = 2;
 	
-	public File[] listDirectory(File f) {
-		if (!f.isDirectory()) {
-			return null;
-		}
-		return f.listFiles();
-	}
+	public FileBrowser() {}
 	
 	/**
-	 * Displays the file browser widgit and prompts the user to select a file.
-	 * Returns the empty string if the user cancels.
+	 * Return a list of all the files and directories in the current directory (currentPath).
+	 * Only the names are added to the string array, not the full path.
+	 * Prepend a parent directory (..) to the top of the list.
 	 * 
-	 * @return "" if cancelled, full pathname to file on success.
+	 * @return The contents of the current directory.
 	 */
-	public String chooseFile() {
-		return "/mnt/sdcard/downloads/bluetooth/Baby.mp3";
-	}
-	
-	//THings can be directories, but return null. perhaps if there are security issues.
-	public File[] listDirectory() {
-		Log.i("", currentPath);
-		File f = new File(currentPath);
-		Log.i("", ""+(f==null));
-		Log.i("", ""+f.isAbsolute());
-		Log.i("", ""+f.isDirectory());
-		Log.i("", ""+(f.listFiles()==null));
-		Log.i("", ""+(f.list()==null));
-		Log.i("", ""+f.listFiles().length);
-		File[] files = f.listFiles();
-		File[] filesAndUpDir= new File[files.length + 1];
-		for (int j = 0; j < files.length; j++) {
-			filesAndUpDir[j+1] = files[j];
+	public String[] getFilelist() {
+		File[] files = (new File(currentPath)).listFiles();
+		String[] res = new String[(files.length+1)];
+		res[0] = "..";
+		
+		for (int i = 1; i <= files.length; i++) {
+			res[i] = files[i-1].getName();
 		}
-		filesAndUpDir[0] = new File(f.getParent());
-		return filesAndUpDir;
-	}
-	
-	public boolean contains(File[] f, String match) {
-		for (String s : toStringArray(f)) {
-			if (s.equals(match)) {
-				return true;
-			}
-		}
-		return false;
-	}
-	
-	public boolean changeDirectory(String directory) {
-		File[] listing = listDirectory(new File(currentPath));
-		if ((contains(listing, directory)) && (new File(currentPath + "/" + directory).isDirectory())) {
-			currentPath = currentPath + directory + "/";
-			return true;
-		}
-		else if (((new File(currentPath)).getParentFile() != null) && ((new File(currentPath)).getParentFile().getName().equals(directory)) && ((new File(currentPath)).getParentFile().isDirectory())) {
-			currentPath = (new File(currentPath)).getParent() + "/";
-			return true;
-		}
-		return false;
-	}
-	
-	public static String[] toStringArray(File[] fs) {
-		String[] res = new String[fs.length];
-		for (int i = 0; i < fs.length; i++) {
-			res[i] = fs[i].getName();
-		}
+		
 		return res;
+	}
+	
+	public void resetPath() {
+		currentPath = "/";
+	}
+	
+	public String getPath() {
+		return currentPath;
 	}
 	
 	public boolean isValidToUpload(File f) {
 		return (f.canRead() && f.exists() && f.isFile());
 	}
+	
+	public int update(String itemClicked) {
+		if (itemClicked.equals("..")) {
+			String parent = (new File(currentPath)).getParent();
+			if (parent == null) {
+				return NO_ACTION;
+			}
+			if (new File(parent) != null) {
+				currentPath = parent;
+				return DIRECTORY;
+			}
+		}
+		if ((new File(currentPath + "/" + itemClicked)).isDirectory()) {
+			currentPath = currentPath + itemClicked + "/";
+			return DIRECTORY;
+		}
+		if (isValidToUpload(new File(currentPath + "/" + itemClicked))) {
+			return VALID_TO_UPLOAD;
+		}
+		return NO_ACTION;
+	}
+
 }

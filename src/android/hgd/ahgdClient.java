@@ -1,5 +1,5 @@
 /*
- * Copyright 2011  Matthew Mole <code@gairne.co.uk>, Carlos Eduardo da Silva <kaduardo@gmail.com>
+ * Copyright 2012  Matthew Mole <code@gairne.co.uk>, Carlos Eduardo da Silva <kaduardo@gmail.com>
  * 
  * This file is part of ahgdc.
  * 
@@ -23,7 +23,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
@@ -55,7 +54,6 @@ import android.widget.Toast;
 import android.hgd.ahgdConstants;
 
 import jhgdc.library.HGDClient;
-import jhgdc.library.JHGDException;
 import jhgdc.library.Playlist;
 import jhgdc.library.PlaylistItem;
 
@@ -217,8 +215,8 @@ public class ahgdClient extends TabActivity implements ThreadListener {
         	}
         });
 		
-        File[] fs = f.listDirectory(new File("/"));
-        listItems = FileBrowser.toStringArray(fs);
+        f.resetPath();
+        listItems = f.getFilelist();
 
         myAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, listItems);
         
@@ -240,53 +238,7 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     }
     
     public void resetSongAdapter() {
-    	songData = new ArrayList<HashMap<String, String>>();
-    	HashMap<String, String> map;
-    	
-    	try {
-    		ArrayList<PlaylistItem> playlist = getPlaylist().getItems();
-    		
-    		if (playlist.isEmpty()) {
-    			map = new HashMap<String, String>();
-                map.put("title", "Nothing playing");
-                map.put("artist", "");
-                map.put("user", "");
-                songData.add(map);
-                
-                map = new HashMap<String, String>();
-                map.put("title", "Refresh");
-                map.put("artist", "");
-                map.put("user", "");
-                songData.add(map);
-    		}
-    		else {
-    			map = new HashMap<String, String>();
-                map.put("title", "Refresh");
-                map.put("artist", "");
-                map.put("user", "");
-                songData.add(map);
-    			
-            	for (PlaylistItem p : playlist) {
-            		map = new HashMap<String, String>();
-                    map.put("title", p.getTitle());
-                    map.put("artist", p.getArtist());
-                    map.put("user", p.getUser());
-                    songData.add(map);
-            	}
-    		}
-    	}
-    	catch (NullPointerException e) {
-    		map = new HashMap<String, String>();
-            map.put("title", "Click to refresh");
-            map.put("artist", "");
-            map.put("user", "");
-            songData.add(map);
-    	}
-    	
-    	songAdapter = new SimpleAdapter (this.getBaseContext(), songData, R.layout.playlistitem,
-                new String[] {"title", "artist", "user"}, new int[] {R.id.title, R.id.artist, R.id.user});
-        
-        songlist.setAdapter(songAdapter);
+    	worker.getPlaylist();
     }
     
     //
@@ -302,7 +254,7 @@ public class ahgdClient extends TabActivity implements ThreadListener {
 				resetSongAdapter();
 			}
 			else {
-				vote();
+				//vote();
 			}
 		}
     }
@@ -377,16 +329,17 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     }
     
     private void filelistClicked(int position) {
-    	if (f.changeDirectory(listItems[position])) {
-			Toast.makeText(getApplicationContext(), new File(f.currentPath).getParent(), Toast.LENGTH_SHORT).show();
-			listItems = FileBrowser.toStringArray(f.listDirectory());
-			resetFileListAdapter();
-		}
-		else if (f.isValidToUpload(new File(f.currentPath + "/" + listItems[position]))) {
-			worker.uploadFile(f.currentPath + "/" + listItems[position]);
-			//uploadthread = new UploadThread(handler, f.currentPath + "/" + listItems[position]);
-			//uploadthread.start();
-		}
+    	int action = f.update(listItems[position]);
+    	if (action == FileBrowser.NO_ACTION) {
+    		//
+    	}
+    	else if (action == FileBrowser.VALID_TO_UPLOAD) {
+    		worker.uploadFile(f.getPath() + "/" + listItems[position]);
+    	}
+    	else if (action == FileBrowser.DIRECTORY) {
+    		listItems = f.getFilelist();
+    		resetFileListAdapter();
+    	}
     }
     
     //
@@ -412,6 +365,7 @@ public class ahgdClient extends TabActivity implements ThreadListener {
 		//active = true;
     	//connthread = new ConnectionThread(handler, intendedServer, entry);
     	//connthread.start();
+    	Toast.makeText(getApplicationContext(), server.getHostname(), Toast.LENGTH_SHORT).show();
     	worker.connectToServer(server, entry);
     }
  
@@ -424,7 +378,7 @@ public class ahgdClient extends TabActivity implements ThreadListener {
      * 
      * @return True on success.
      */
-    public boolean vote() {
+    /*public boolean vote() {
     	try {
     		PlaylistItem response = jc.getCurrentPlaying();		
     		if (!response.isEmpty()) {
@@ -471,14 +425,14 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT).show();
     	}
     	return false;
-    }
+    }*/
     
     /**
      * Vote off the song that corresponds to the trackId
      * 
      * @return True on success.
      */
-    public boolean vote(String trackId) {
+    /*public boolean vote(String trackId) {
     	try {
     		//TODO: check trackId is valid
     		jc.requestVoteOff(trackId);
@@ -505,14 +459,14 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT).show();
     	}
     	return false;
-    }
+    }*/
     
     /**
      * Return the current Playlist.
      * 
      * @return a Playlist object, populated with PlaylistItems.
      */
-    public Playlist getPlaylist() {
+    /*public Playlist getPlaylist() {
     	try {
     		return jc.getPlaylist();
     	}
@@ -537,7 +491,7 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     	
     	Log.i("","null here");
     	return null;
-    }
+    }*/
 
     public String[] convertServers(ArrayList<ServerDetails> arraylist) {
     	String[] toRet = new String[arraylist.size()];
@@ -600,6 +554,63 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     		return;
     	}
     }
+    
+    /**
+     * See the warning attached to notify()
+     */
+    public void notifyPlaylist(final Playlist receivedPlaylist) {
+    	handler.post(new Runnable() {
+    		public void run() {
+    			songData = new ArrayList<HashMap<String, String>>();
+    	    	HashMap<String, String> map;
+    	    	
+    	    	try {
+    	    		ArrayList<PlaylistItem> playlist = receivedPlaylist.getItems();
+    	    		
+    	    		if (playlist.isEmpty()) {
+    	    			map = new HashMap<String, String>();
+    	                map.put("title", "Refresh");
+    	                map.put("artist", "");
+    	                map.put("user", "");
+    	                songData.add(map);
+    	    			
+    	    			/*map = new HashMap<String, String>();
+    	                map.put("title", "Nothing playing");
+    	                map.put("artist", "");
+    	                map.put("user", "");
+    	                songData.add(map);*/
+    	    		}
+    	    		else {
+    	    			map = new HashMap<String, String>();
+    	                map.put("title", "Refresh");
+    	                map.put("artist", "");
+    	                map.put("user", "");
+    	                songData.add(map);
+    	    			
+    	            	for (PlaylistItem p : playlist) {
+    	            		map = new HashMap<String, String>();
+    	                    map.put("title", p.getTitle());
+    	                    map.put("artist", p.getArtist());
+    	                    map.put("user", p.getUser());
+    	                    songData.add(map);
+    	            	}
+    	    		}
+    	    	}
+    	    	catch (NullPointerException e) {
+    	    		map = new HashMap<String, String>();
+    	            map.put("title", "Click to refresh");
+    	            map.put("artist", "");
+    	            map.put("user", "");
+    	            songData.add(map);
+    	    	}
+    	    	
+    	    	songAdapter = new SimpleAdapter (getApplicationContext(), songData, R.layout.playlistitem,
+    	                new String[] {"title", "artist", "user"}, new int[] {R.id.title, R.id.artist, R.id.user});
+    	        
+    	        songlist.setAdapter(songAdapter);
+    		}
+    	});
+    }
 
     //TODO: Use strings.xml text
     /**
@@ -620,33 +631,59 @@ public class ahgdClient extends TabActivity implements ThreadListener {
 					Toast.makeText(getApplicationContext(), "Uploaded Successfully", Toast.LENGTH_SHORT).show();
 					break;
 				}
+				case ahgdConstants.THREAD_VOTING_SUCCESS: {
+					Toast.makeText(getApplicationContext(), "Voted Successfully", Toast.LENGTH_SHORT).show();
+					break;
+				}
 				case ahgdConstants.THREAD_CONNECTION_GENFAIL:
 				case ahgdConstants.THREAD_CONNECTION_IOFAIL: {
 					currentServer.setText("Not currently connected");
 					Toast.makeText(getApplicationContext(), "General error whilst connecting", Toast.LENGTH_SHORT).show();
+					Toast.makeText(getApplicationContext(), extraInformation, Toast.LENGTH_SHORT).show();
 					break;
 				}
 				case ahgdConstants.THREAD_CONNECTION_PASSWORD_GENFAIL:
 				case ahgdConstants.THREAD_CONNECTION_PASSWORD_IOFAIL: {
 					currentServer.setText("Not currently connected");
 					Toast.makeText(getApplicationContext(), "General error whilst logging in", Toast.LENGTH_SHORT).show();
+					Toast.makeText(getApplicationContext(), extraInformation, Toast.LENGTH_SHORT).show();
 					break;
 				}
 				case ahgdConstants.THREAD_UPLOAD_FILENOTFOUND: {
 					Toast.makeText(getApplicationContext(), "File not found", Toast.LENGTH_SHORT).show();
+					Toast.makeText(getApplicationContext(), extraInformation, Toast.LENGTH_SHORT).show();
 					break;
 				}
 				case ahgdConstants.THREAD_UPLOAD_GENFAIL: 
 				case ahgdConstants.THREAD_UPLOAD_IOFAIL: {
 					Toast.makeText(getApplicationContext(), "General error whilst uploading", Toast.LENGTH_SHORT).show();
+					Toast.makeText(getApplicationContext(), extraInformation, Toast.LENGTH_SHORT).show();
 					break;
 				}
 				case ahgdConstants.THREAD_UPLOAD_NOTAUTH: {
 					Toast.makeText(getApplicationContext(), "Not logged in", Toast.LENGTH_SHORT).show();
+					Toast.makeText(getApplicationContext(), extraInformation, Toast.LENGTH_SHORT).show();
 					break;
 				}
 				case ahgdConstants.THREAD_UPLOAD_NOTCONNECTED: {
 					Toast.makeText(getApplicationContext(), "Not connected", Toast.LENGTH_SHORT).show();
+					Toast.makeText(getApplicationContext(), extraInformation, Toast.LENGTH_SHORT).show();
+					break;
+				}
+				case ahgdConstants.THREAD_VOTING_GENFAIL:
+				case ahgdConstants.THREAD_VOTING_IOFAIL: {
+					Toast.makeText(getApplicationContext(), "General error whilst voting", Toast.LENGTH_SHORT).show();
+					Toast.makeText(getApplicationContext(), extraInformation, Toast.LENGTH_SHORT).show();
+					break;
+				}
+				case ahgdConstants.THREAD_VOTING_NOTAUTH: {
+					Toast.makeText(getApplicationContext(), "Not logged in", Toast.LENGTH_SHORT).show();
+					Toast.makeText(getApplicationContext(), extraInformation, Toast.LENGTH_SHORT).show();
+					break;
+				}
+				case ahgdConstants.THREAD_VOTING_NOTCONNECTED: {
+					Toast.makeText(getApplicationContext(), "Not connected", Toast.LENGTH_SHORT).show();
+					Toast.makeText(getApplicationContext(), extraInformation, Toast.LENGTH_SHORT).show();
 					break;
 				}
 				}
