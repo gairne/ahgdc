@@ -63,6 +63,7 @@ public class FileBrowser
 	}
 	
 	public int update(String itemClicked) {
+		String fullPath = currentPath + "/" + itemClicked;
 		if (itemClicked.equals("..")) {
 			String parent = (new File(currentPath)).getParent();
 			if (parent == null) {
@@ -73,11 +74,14 @@ public class FileBrowser
 				return DIRECTORY;
 			}
 		}
-		if ((new File(currentPath + "/" + itemClicked)).isDirectory()) {
+		if ((new File(fullPath)) == null || ((new File(fullPath)).isDirectory() && (new File(fullPath)).listFiles() == null)) {
+			return NO_ACTION;
+		}
+		else if ((new File(fullPath)).isDirectory()) {
 			currentPath = currentPath + itemClicked + "/";
 			return DIRECTORY;
 		}
-		if (isValidToUpload(new File(currentPath + "/" + itemClicked))) {
+		else if (isValidToUpload(new File(fullPath))) {
 			return VALID_TO_UPLOAD;
 		}
 		return NO_ACTION;
