@@ -70,7 +70,7 @@ public class FileBrowser
 				return NO_ACTION;
 			}
 			if (new File(parent) != null) {
-				currentPath = parent;
+				currentPath = parent + "/";
 				return DIRECTORY;
 			}
 		}

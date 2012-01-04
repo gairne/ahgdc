@@ -86,6 +86,11 @@ public class ahgdClient extends TabActivity implements ThreadListener {
 	private ListView songlist;
 	private SimpleAdapter songAdapter;
 	
+	//activitylist
+	private ArrayAdapter activitiesAdapter;
+	private ListView activitylist;
+	private String[] activityItems = {};
+	
 	//servers
 	private ListView serverlist;
 	private TextView currentServer;
@@ -111,14 +116,17 @@ public class ahgdClient extends TabActivity implements ThreadListener {
         TabHost.TabSpec t_upload = tabs.newTabSpec("filebrowser").setContent(R.id.filebrowser).setIndicator("Upload", resources.getDrawable(R.drawable.upload));
         TabHost.TabSpec t_playlist = tabs.newTabSpec("playlist").setContent(R.id.playlist).setIndicator("Playlist", resources.getDrawable(R.drawable.playlist));
         TabHost.TabSpec t_servers = tabs.newTabSpec("servers").setContent(R.id.serversframe).setIndicator("Servers", resources.getDrawable(R.drawable.servers));
+        TabHost.TabSpec t_activities = tabs.newTabSpec("activities").setContent(R.id.activitylist).setIndicator("Active", resources.getDrawable(R.drawable.activities));
         
         tabs.addTab(t_upload);
         tabs.addTab(t_playlist);
         tabs.addTab(t_servers);
+        tabs.addTab(t_activities);
         
         init_upload_tab();
         init_playlist_tab();
         init_servers_tab();
+        init_activities_tab();
 	}
 	
 	@Override
@@ -223,6 +231,37 @@ public class ahgdClient extends TabActivity implements ThreadListener {
         filelist.setAdapter(myAdapter);
     }
     
+    public void init_activities_tab() {
+    	activitylist = (ListView) findViewById(R.id.activitylist);
+    	
+    	activitiesAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, activityItems);
+        activitylist.setAdapter(activitiesAdapter);
+        
+        resetActivityAdapter();
+    	
+    	/*activitylist.setOnItemClickListener(new OnItemClickListener() {
+    		public void onItemClick(AdapterView parent, View v, int position, long id) {
+    			playlistClicked(position);
+    		}
+    	});*/
+    	
+    	//resetSongAdapter();
+    	
+    	/*songData = new ArrayList<HashMap<String, String>>();
+    	HashMap<String, String> map;
+    	
+        map = new HashMap<String, String>();
+        map.put("title", "Refresh");
+        map.put("artist", "");
+        map.put("user", "");
+        songData.add(map);
+    	
+    	songAdapter = new SimpleAdapter (this.getBaseContext(), songData, R.layout.playlistitem,
+                new String[] {"title", "artist", "user"}, new int[] {R.id.title, R.id.artist, R.id.user});
+        
+        songlist.setAdapter(songAdapter);*/
+    }
+    
     //
     // Updating the data of the User Interface components (refreshes them)
     //
@@ -239,6 +278,10 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     
     public void resetSongAdapter() {
     	worker.getPlaylist();
+    }
+    
+    public void resetActivityAdapter() {
+    	worker.getActive();
     }
     
     //
@@ -687,6 +730,16 @@ public class ahgdClient extends TabActivity implements ThreadListener {
 					break;
 				}
 				}
+			}
+		});
+	}
+
+	public void notifyActive(final String[] activities) {
+		handler.post(new Runnable() {
+			public void run() {
+				activityItems = activities;
+				activitiesAdapter = new ArrayAdapter<String>(getApplicationContext(), android.R.layout.simple_list_item_1, activityItems);
+		        activitylist.setAdapter(activitiesAdapter);
 			}
 		});
 	}
