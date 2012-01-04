@@ -173,10 +173,12 @@ public class ahgdClient extends TabActivity implements ThreadListener {
         map.put("title", "Refresh");
         map.put("artist", "");
         map.put("user", "");
+        map.put("duration", "");
+        map.put("voted", "");
         songData.add(map);
     	
     	songAdapter = new SimpleAdapter (this.getBaseContext(), songData, R.layout.playlistitem,
-                new String[] {"title", "artist", "user"}, new int[] {R.id.title, R.id.artist, R.id.user});
+                new String[] {"title", "artist", "user", "duration", "voted"}, new int[] {R.id.title, R.id.artist, R.id.user, R.id.duration, R.id.voted});
         
         songlist.setAdapter(songAdapter);
     }
@@ -615,6 +617,8 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     	                map.put("title", "Refresh");
     	                map.put("artist", "");
     	                map.put("user", "");
+    	                map.put("duration", "");
+    	                map.put("voted", "");
     	                songData.add(map);
     	    			
     	    			/*map = new HashMap<String, String>();
@@ -628,6 +632,8 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     	                map.put("title", "Refresh");
     	                map.put("artist", "");
     	                map.put("user", "");
+    	                map.put("duration", "");
+    	                map.put("voted", "");
     	                songData.add(map);
     	    			
     	            	for (PlaylistItem p : playlist) {
@@ -635,6 +641,13 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     	                    map.put("title", p.getTitle());
     	                    map.put("artist", p.getArtist());
     	                    map.put("user", p.getUser());
+    	                    map.put("duration", p.getDuration() + "s");
+    	                    if (p.haveVoted().equals("1")) {
+    	                    	map.put("voted", "Voted");
+    	                    }
+    	                    else {
+        	                    map.put("voted", "Not voted");
+    	                    }
     	                    songData.add(map);
     	            	}
     	    		}
@@ -644,11 +657,13 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     	            map.put("title", "Click to refresh");
     	            map.put("artist", "");
     	            map.put("user", "");
+    	            map.put("duration", "");
+    	            map.put("voted", "");
     	            songData.add(map);
     	    	}
     	    	
     	    	songAdapter = new SimpleAdapter (getApplicationContext(), songData, R.layout.playlistitem,
-    	                new String[] {"title", "artist", "user"}, new int[] {R.id.title, R.id.artist, R.id.user});
+    	                new String[] {"title", "artist", "user", "duration", "voted"}, new int[] {R.id.title, R.id.artist, R.id.user, R.id.duration, R.id.voted});
     	        
     	        songlist.setAdapter(songAdapter);
     		}
