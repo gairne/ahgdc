@@ -23,6 +23,7 @@ import jhgdc.library.Playlist;
 
 public interface ThreadListener {
 
+	void notifyActive(final String[] activities);
 	void notifyPlaylist(final Playlist receivedPlaylist);
 	void notify(final int message, final String extraInfo);
 }

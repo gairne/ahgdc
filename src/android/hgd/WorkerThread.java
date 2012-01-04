@@ -32,6 +32,7 @@ import android.os.Looper;
 public class WorkerThread extends Thread {
 	private ThreadListener uiThreadCallback;
 	private Handler workerHandler;
+	private String[] activities = {};
 	
 	public WorkerThread(ThreadListener uiThreadCallback) {
 		this.uiThreadCallback = uiThreadCallback;
@@ -41,7 +42,7 @@ public class WorkerThread extends Thread {
 	public void run() {
 		try {
 			Looper.prepare();
-			
+
 			//The worker thread receives work by receiving runnables through this handler.
 			workerHandler = new Handler();
 			
@@ -49,6 +50,25 @@ public class WorkerThread extends Thread {
 		} catch (Throwable t) {
 			
 		} 
+	}
+	
+	public synchronized void removeActivity() {
+		String[] replacement = new String[activities.length-1];
+		for (int i = 1; i < activities.length; i++) {
+			replacement[i-1] = activities[i];
+		}
+		activities = replacement;
+		uiThreadCallback.notifyActive(activities);
+	}
+	
+	public synchronized void addActivity(String message) {
+		String[] replacement = new String[activities.length+1];
+		for (int i = 0; i < activities.length; i++) {
+			replacement[i] = activities[i];
+		}
+		replacement[activities.length] = message;
+		activities = replacement;
+		uiThreadCallback.notifyActive(activities);
 	}
 	
 	/**
@@ -68,10 +88,12 @@ public class WorkerThread extends Thread {
 		        	//It's fine.
 		        }
 		        catch (IOException e) {
+		        	removeActivity();
 		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_IOFAIL, e.toString());
 		        	return;
 		        }
 		        catch (JHGDException e) {
+		        	removeActivity();
 		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_GENFAIL, e.toString());
 		        	return;
 		        }
@@ -81,10 +103,12 @@ public class WorkerThread extends Thread {
 		        	ahgdClient.jc.connect(server.getHostname(), Integer.parseInt(server.getPort()));
 			    }
 				catch (IOException e) {
+					removeActivity();
 		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_IOFAIL, e.toString());
 		        	return;
 		        }
 		        catch (JHGDException e) {
+		        	removeActivity();
 		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_GENFAIL, e.toString());
 		        	return;
 		        }
@@ -94,15 +118,27 @@ public class WorkerThread extends Thread {
 			    	ahgdClient.jc.login(server.getUser(), password);
 		    	}
 				catch (IOException e) {
+					removeActivity();
 		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_PASSWORD_IOFAIL, e.toString());
 		        	return;
 		        }
 		        catch (JHGDException e) {
+		        	removeActivity();
 		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_PASSWORD_GENFAIL, e.toString());
 		        	return;
 		        }
 				
+				removeActivity();
 		    	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_SUCCESS, server.getHostname());
+			}
+		});
+		addActivity("connect to " + server.getHostname());
+	}
+	
+	public synchronized void getActive() {
+		workerHandler.post(new Runnable() {
+			public void run() {
+				uiThreadCallback.notifyActive(activities);
 			}
 		});
 	}
@@ -120,10 +156,12 @@ public class WorkerThread extends Thread {
 		    		ahgdClient.jc.requestQueue(new File(filename));
 		    	}
 		    	catch (FileNotFoundException e) {
+		    		removeActivity();
 		    		uiThreadCallback.notify(ahgdConstants.THREAD_UPLOAD_FILENOTFOUND, e.toString());
 		    		return;
 		    	}
 		    	catch (IllegalStateException e) {
+		    		removeActivity();
 		    		if (e.getMessage().equals("Client not connected")) {
 		        		uiThreadCallback.notify(ahgdConstants.THREAD_UPLOAD_NOTCONNECTED, e.toString());
 		        		return;
@@ -138,17 +176,21 @@ public class WorkerThread extends Thread {
 		    		}
 		    	}
 		    	catch (IOException e) {
+		    		removeActivity();
 		    		uiThreadCallback.notify(ahgdConstants.THREAD_UPLOAD_IOFAIL, e.toString());
 		    		return;
 		    	}
 		    	catch (JHGDException e) {
+		    		removeActivity();
 		    		uiThreadCallback.notify(ahgdConstants.THREAD_UPLOAD_GENFAIL, e.toString());
 		    		return;
 		    	}
 				
+				removeActivity();
 		    	uiThreadCallback.notify(ahgdConstants.THREAD_UPLOAD_SUCCESS, "");
 			}
 		});
+		addActivity("enqueue " + (new File(filename)).getName());
 	}
 	
 	/**
@@ -165,25 +207,31 @@ public class WorkerThread extends Thread {
 		    		uiThreadCallback.notifyPlaylist(p);
 		    	}
 		    	catch (IllegalArgumentException e) {
+		    		removeActivity();
 		    		uiThreadCallback.notify(ahgdConstants.THREAD_PLAYLIST_GENFAIL, e.toString());
 		    		return;
 		    	}
 		    	catch (IllegalStateException e) {
+		    		removeActivity();
 		    		uiThreadCallback.notify(ahgdConstants.THREAD_PLAYLIST_GENFAIL, e.toString());
 			    	return;
 		    	}
 		    	catch (IOException e) {
+		    		removeActivity();
 		    		uiThreadCallback.notify(ahgdConstants.THREAD_PLAYLIST_IOFAIL, e.toString());
 		    		return;
 		    	}
 		    	catch (JHGDException e) {
+		    		removeActivity();
 		    		uiThreadCallback.notify(ahgdConstants.THREAD_PLAYLIST_GENFAIL, e.toString());
 		    		return;
 		    	}
 				
+				removeActivity();
 		    	uiThreadCallback.notify(ahgdConstants.THREAD_PLAYLIST_SUCCESS, "");
 			}
 		});
+		addActivity("retrieving playlist");
 	}
 	
 	/**
@@ -200,10 +248,12 @@ public class WorkerThread extends Thread {
 		    		ahgdClient.jc.requestVoteOff(trackID);
 		    	}
 		    	catch (IllegalArgumentException e) {
+		    		removeActivity();
 		    		uiThreadCallback.notify(ahgdConstants.THREAD_VOTING_GENFAIL, e.toString());
 		    		return;
 		    	}
 		    	catch (IllegalStateException e) {
+		    		removeActivity();
 		    		if (e.getMessage().equals("Client not connected")) {
 		    			uiThreadCallback.notify(ahgdConstants.THREAD_VOTING_NOTCONNECTED, e.toString());
 			    		return;
@@ -218,16 +268,20 @@ public class WorkerThread extends Thread {
 		    		}
 		    	}
 		    	catch (IOException e) {
+		    		removeActivity();
 		    		uiThreadCallback.notify(ahgdConstants.THREAD_VOTING_IOFAIL, e.toString());
 		    		return;
 		    	}
 		    	catch (JHGDException e) {
+		    		removeActivity();
 		    		uiThreadCallback.notify(ahgdConstants.THREAD_VOTING_GENFAIL, e.toString());
 		    		return;
 		    	}
 				
+				removeActivity();
 		    	uiThreadCallback.notify(ahgdConstants.THREAD_VOTING_SUCCESS, "");
 			}
 		});
+		addActivity("voting off current");
 	}
 }

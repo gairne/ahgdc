@@ -2,3 +2,8 @@ Android Hackathon Gunther Daemon Client (ahgdc)
 
 Copyright 2011  Matthew Mole <code@gairne.co.uk>, Carlos Eduardo da Silva <kaduardo@gmail.com>
 
+To build in eclipse, first obtain a copy of libjhgdc available at https://github.com/gairne/jhgdc
+Install the android SDK by following the guide at http://developer.android.com/sdk/installing.html. You will need API version 10 (2.3.3).
+Open eclipse and import the libjhgdc project and ahgdc projects. Open ahgdc project properties and add libjhgdc to the build path as a project.
+
+
