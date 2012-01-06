@@ -52,6 +52,13 @@ public class WorkerThread extends Thread {
 		} 
 	}
 	
+	public synchronized void die() {
+		Looper.myLooper().quit();
+		workerHandler = null;
+		activities = null;
+		uiThreadCallback = null;
+	}
+	
 	public synchronized void removeActivity() {
 		String[] replacement = new String[activities.length-1];
 		for (int i = 1; i < activities.length; i++) {
@@ -59,6 +66,15 @@ public class WorkerThread extends Thread {
 		}
 		activities = replacement;
 		uiThreadCallback.notifyActive(activities);
+	}
+	
+	public synchronized String getLatestActivity() {
+		try {
+			return activities[activities.length - 1];
+		}
+		catch (Exception e) {
+			return "";
+		}
 	}
 	
 	public synchronized void addActivity(String message) {
@@ -145,6 +161,7 @@ public class WorkerThread extends Thread {
 	
 	/**
 	 * This is called by the User Interface thread and sends a runnable to the worker thread to be executed.
+	 * Also updates the playlist
 	 * 
 	 * @param server
 	 * @param password
@@ -154,6 +171,7 @@ public class WorkerThread extends Thread {
 			public void run() {
 				try {
 		    		ahgdClient.jc.requestQueue(new File(filename));
+		    		
 		    	}
 		    	catch (FileNotFoundException e) {
 		    		removeActivity();
@@ -187,6 +205,7 @@ public class WorkerThread extends Thread {
 		    	}
 				
 				removeActivity();
+				getPlaylist();
 		    	uiThreadCallback.notify(ahgdConstants.THREAD_UPLOAD_SUCCESS, "");
 			}
 		});
@@ -200,6 +219,9 @@ public class WorkerThread extends Thread {
 	 * @param password
 	 */
 	public synchronized void getPlaylist() {
+		/*if (getLatestActivity().equals("retrieving playlist")) {
+			return;
+		}*/
 		workerHandler.post(new Runnable() {
 			public void run() {
 				try {

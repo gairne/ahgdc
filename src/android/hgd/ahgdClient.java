@@ -26,19 +26,25 @@ import java.io.FileOutputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 import android.app.AlertDialog;
 import android.app.TabActivity;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.text.InputType;
+import android.text.method.PasswordTransformationMethod;
+import android.text.method.TransformationMethod;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.inputmethod.EditorInfo;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemLongClickListener;
@@ -71,6 +77,7 @@ public class ahgdClient extends TabActivity implements ThreadListener {
 	private Handler handler;
 	
 	private WorkerThread worker;
+	private PeriodicThread refresher;
 	
 	//Temporary state variables
 	private String toVoteOff;
@@ -127,6 +134,17 @@ public class ahgdClient extends TabActivity implements ThreadListener {
         init_playlist_tab();
         init_servers_tab();
         init_activities_tab();
+        
+        //Playlist listener
+        getTabWidget().getChildAt(1).setOnClickListener(new OnClickListener() {
+			public void onClick(View v) {
+				resetSongAdapter();
+				getTabHost().setCurrentTab(1);
+			}
+        });
+        
+        refresher = new PeriodicThread(10000, worker);
+        refresher.start();
 	}
 	
 	@Override
@@ -135,6 +153,9 @@ public class ahgdClient extends TabActivity implements ThreadListener {
 	    super.onConfigurationChanged(newConfig);
 	}
 	
+	/**
+	 * Activity has been started - perhaps after having been killed.
+	 */
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -150,6 +171,57 @@ public class ahgdClient extends TabActivity implements ThreadListener {
          * 127.0.0.1 gives connection refused:
          * See http://stackoverflow.com/questions/3497253/java-net-connectexception-connection-refused-android-emulator
          */
+    }
+    
+    /**
+     * Activity has just been started (following onCreate) or has been restarted
+     * having been previously stopped
+     */
+    @Override
+    public void onStart() {
+    	super.onStart();
+    }
+    
+    /**
+     * Activity has just been resumed having been previously paused
+     */
+    @Override
+    public void onResume() {
+    	super.onResume();
+    }
+    
+    /**
+     * Activity has been paused because another activity is in the foreground (has focus)
+     */
+    @Override
+    public void onPause() {
+    	super.onPause();
+    }
+    
+    /**
+     * Activity has been stopped because it is no longer visible
+     */
+    @Override
+    public void onStop() {
+    	super.onStop();
+    }
+    
+    /**
+     * Activity has become visible again after being stopped
+     */
+    @Override
+    public void onRestart() {
+    	super.onRestart();
+    }
+    
+    /**
+     * Activity is about to shut down gracefully - i.e. without being killed for memory.
+     */
+    @Override
+    public void onDestroy() {
+    	super.onDestroy();
+    	
+    	worker.die();
     }
     
     //
@@ -240,28 +312,6 @@ public class ahgdClient extends TabActivity implements ThreadListener {
         activitylist.setAdapter(activitiesAdapter);
         
         resetActivityAdapter();
-    	
-    	/*activitylist.setOnItemClickListener(new OnItemClickListener() {
-    		public void onItemClick(AdapterView parent, View v, int position, long id) {
-    			playlistClicked(position);
-    		}
-    	});*/
-    	
-    	//resetSongAdapter();
-    	
-    	/*songData = new ArrayList<HashMap<String, String>>();
-    	HashMap<String, String> map;
-    	
-        map = new HashMap<String, String>();
-        map.put("title", "Refresh");
-        map.put("artist", "");
-        map.put("user", "");
-        songData.add(map);
-    	
-    	songAdapter = new SimpleAdapter (this.getBaseContext(), songData, R.layout.playlistitem,
-                new String[] {"title", "artist", "user"}, new int[] {R.id.title, R.id.artist, R.id.user});
-        
-        songlist.setAdapter(songAdapter);*/
     }
     
     //
@@ -310,6 +360,7 @@ public class ahgdClient extends TabActivity implements ThreadListener {
 	    alert.setMessage("enter password");
 	    
 	    final EditText input = new EditText(this);
+	    input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
 	    alert.setView(input);
 	    
 	    alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
@@ -351,26 +402,8 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     }
     
     private void addServerClicked() {
-    	AlertDialog.Builder alert = new AlertDialog.Builder(this);
-	    alert.setTitle("host");
-	    alert.setMessage("enter user@hostname:port");
-	    
-	    final EditText input = new EditText(this);
-	    alert.setView(input);
-	    
-	    alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-			public void onClick(DialogInterface dialog, int which) {
-				addServer(input.getText().toString());
-			}
-		});
-	    
-	    alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-			public void onClick(DialogInterface dialog, int which) {
-				dialog.cancel();
-			}
-		});
-	    
-	    alert.show();
+    	Intent myIntent = new Intent(getApplicationContext(), AddServerActivity.class);
+        startActivityForResult(myIntent, ahgdConstants.SERVER_DETAILS);
     }
     
     private void filelistClicked(int position) {
@@ -757,5 +790,16 @@ public class ahgdClient extends TabActivity implements ThreadListener {
 		        activitylist.setAdapter(activitiesAdapter);
 			}
 		});
+	}
+	
+	public void onActivityResult(int requestCode, int resultCode, Intent intent) {
+		if (requestCode == ahgdConstants.SERVER_DETAILS) {
+            if (resultCode == RESULT_OK) {
+                String contents = intent.getStringExtra(ahgdConstants.SERVER_DATA);
+                addServer(contents);
+            } else if (resultCode == RESULT_CANCELED) {
+            	//Fine
+            }
+        }
 	}
 }
