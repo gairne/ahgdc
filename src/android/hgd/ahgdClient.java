@@ -23,6 +23,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
@@ -42,6 +43,9 @@ import android.text.InputType;
 import android.text.method.PasswordTransformationMethod;
 import android.text.method.TransformationMethod;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.inputmethod.EditorInfo;
@@ -60,6 +64,7 @@ import android.widget.Toast;
 import android.hgd.ahgdConstants;
 
 import jhgdc.library.HGDClient;
+import jhgdc.library.JHGDException;
 import jhgdc.library.Playlist;
 import jhgdc.library.PlaylistItem;
 
@@ -341,17 +346,24 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     //
     
     private void playlistClicked(int position) {
-    	if (songData == null) {
-			resetSongAdapter();
-		}
-		else {
-			if (songData.get(position).get("title").equals("Refresh")) {
-				resetSongAdapter();
+    	AlertDialog.Builder alert = new AlertDialog.Builder(this);
+	    alert.setTitle("Vote off?");
+	    alert.setMessage("Would you like to vote off the current song?");
+	    
+	    alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+			
+			public void onClick(DialogInterface dialog, int which) {
+				vote();
 			}
-			else {
-				//vote();
+		});
+	    
+	    alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+			public void onClick(DialogInterface dialog, int which) {
+				dialog.cancel();
 			}
-		}
+		});
+	    
+	    alert.show();
     }
     
     private void serverlistClicked(final int position) {
@@ -440,11 +452,7 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     }
     
     private void connectServer(ServerDetails server, String entry) {
-		//active = true;
-    	//connthread = new ConnectionThread(handler, intendedServer, entry);
-    	//connthread.start();
-    	//Toast.makeText(getApplicationContext(), server.getHostname(), Toast.LENGTH_SHORT).show();
-    	worker.connectToServer(server, entry);
+		worker.connectToServer(server, entry);
     }
  
     public void log(String tag, String message) {
@@ -453,123 +461,10 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     
     /**
      * Vote off the current song
-     * 
-     * @return True on success.
      */
-    /*public boolean vote() {
-    	try {
-    		PlaylistItem response = jc.getCurrentPlaying();		
-    		if (!response.isEmpty()) {
-    			AlertDialog.Builder builder = new AlertDialog.Builder(this);
-    			builder.setMessage("Are you sure you want to vote off?")
-    			       .setCancelable(false)
-    			       .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-    			           public void onClick(DialogInterface dialog, int id) {
-    			                vote(toVoteOff);
-    			           }
-    			       })
-    			       .setNegativeButton("No", new DialogInterface.OnClickListener() {
-    			           public void onClick(DialogInterface dialog, int id) {
-    			                dialog.cancel();
-    			           }
-    			       });
-    			AlertDialog alert = builder.create();
-    			alert.show();
-    			return true;
-    		}
-    		else {
-    			Toast.makeText(this.getBaseContext(), R.string.NothingPlaying, Toast.LENGTH_SHORT).show();
-    			return false;
-    		}
-    	}
-    	catch (IllegalArgumentException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.IAE, Toast.LENGTH_SHORT).show();
-    	}
-    	catch (IllegalStateException e) {
-    		if (e.getMessage().equals("Client not connected")) {
-    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT).show();
-    		}
-    		else if (e.getMessage().equals("Client not authenticated")) {
-    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotAuthenticated, Toast.LENGTH_SHORT).show();
-    		}
-    		else {
-    			Toast.makeText(this.getBaseContext(), R.string.Error, Toast.LENGTH_SHORT).show();
-    		}
-    	}
-    	catch (IOException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.IOE, Toast.LENGTH_SHORT).show();
-    	}
-    	catch (JHGDException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT).show();
-    	}
-    	return false;
-    }*/
-    
-    /**
-     * Vote off the song that corresponds to the trackId
-     * 
-     * @return True on success.
-     */
-    /*public boolean vote(String trackId) {
-    	try {
-    		//TODO: check trackId is valid
-    		jc.requestVoteOff(trackId);
-    		return true;
-    	}
-    	catch (IllegalArgumentException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.IAE, Toast.LENGTH_SHORT).show();
-    	}
-    	catch (IllegalStateException e) {
-    		if (e.getMessage().equals("Client not connected")) {
-    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT).show();
-    		}
-    		else if (e.getMessage().equals("Client not authenticated")) {
-    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotAuthenticated, Toast.LENGTH_SHORT).show();
-    		}
-    		else {
-    			Toast.makeText(this.getBaseContext(), R.string.Error, Toast.LENGTH_SHORT).show();
-    		}
-    	}
-    	catch (IOException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.IOE, Toast.LENGTH_SHORT).show();
-    	}
-    	catch (JHGDException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT).show();
-    	}
-    	return false;
-    }*/
-    
-    /**
-     * Return the current Playlist.
-     * 
-     * @return a Playlist object, populated with PlaylistItems.
-     */
-    /*public Playlist getPlaylist() {
-    	try {
-    		return jc.getPlaylist();
-    	}
-    	catch (IllegalArgumentException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.IAE, Toast.LENGTH_SHORT).show();
-    		Log.i("", "IAE");
-    		Toast.makeText(this.getBaseContext(), e.toString(), Toast.LENGTH_SHORT).show();
-    		Log.i("ahgdc", e.toString());
-    	}
-    	catch (IllegalStateException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT).show();
-    		Log.i("", "ISE");
-    	}
-    	catch (IOException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.IOE, Toast.LENGTH_SHORT).show();
-    		Log.i("", "IOE");
-    	}
-    	catch (JHGDException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT).show();
-    		Log.i("", "JHGDE");
-    	}
-    	
-    	Log.i("","null here");
-    	return null;
-    }*/
+    public void vote() {
+    	worker.voteSong();
+    }
 
     public String[] convertServers(ArrayList<ServerDetails> arraylist) {
     	String[] toRet = new String[arraylist.size()];
@@ -647,27 +542,9 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     	    		
     	    		if (playlist.isEmpty()) {
     	    			map = new HashMap<String, String>();
-    	                map.put("title", "Refresh");
-    	                map.put("artist", "");
-    	                map.put("user", "");
-    	                map.put("duration", "");
-    	                map.put("voted", "");
-    	                songData.add(map);
-    	    			
-    	    			/*map = new HashMap<String, String>();
-    	                map.put("title", "Nothing playing");
-    	                map.put("artist", "");
-    	                map.put("user", "");
-    	                songData.add(map);*/
     	    		}
     	    		else {
     	    			map = new HashMap<String, String>();
-    	                map.put("title", "Refresh");
-    	                map.put("artist", "");
-    	                map.put("user", "");
-    	                map.put("duration", "");
-    	                map.put("voted", "");
-    	                songData.add(map);
     	    			
     	            	for (PlaylistItem p : playlist) {
     	            		map = new HashMap<String, String>();
@@ -687,12 +564,6 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     	    	}
     	    	catch (NullPointerException e) {
     	    		map = new HashMap<String, String>();
-    	            map.put("title", "Click to refresh");
-    	            map.put("artist", "");
-    	            map.put("user", "");
-    	            map.put("duration", "");
-    	            map.put("voted", "");
-    	            songData.add(map);
     	    	}
     	    	
     	    	songAdapter = new SimpleAdapter (getApplicationContext(), songData, R.layout.playlistitem,
@@ -801,5 +672,26 @@ public class ahgdClient extends TabActivity implements ThreadListener {
             	//Fine
             }
         }
+	}
+	
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+	    MenuInflater inflater = getMenuInflater();
+	    inflater.inflate(R.menu.mainmenu, menu);
+	    return true;
+	}
+	
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+	    switch (item.getItemId()) {
+	    case R.id.connect:
+	        
+	        return true;
+	    case R.id.settings:
+	        
+	        return true;
+	    default:
+	        return super.onOptionsItemSelected(item);
+	    }
 	}
 }

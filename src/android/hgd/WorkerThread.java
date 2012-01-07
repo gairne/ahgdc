@@ -171,7 +171,7 @@ public class WorkerThread extends Thread {
 			public void run() {
 				try {
 		    		ahgdClient.jc.requestQueue(new File(filename));
-		    		
+		    		getPlaylist();
 		    	}
 		    	catch (FileNotFoundException e) {
 		    		removeActivity();
@@ -219,9 +219,9 @@ public class WorkerThread extends Thread {
 	 * @param password
 	 */
 	public synchronized void getPlaylist() {
-		/*if (getLatestActivity().equals("retrieving playlist")) {
+		if (getLatestActivity().equals("retrieving playlist")) {
 			return;
-		}*/
+		}
 		workerHandler.post(new Runnable() {
 			public void run() {
 				try {
@@ -262,12 +262,13 @@ public class WorkerThread extends Thread {
 	 * @param server
 	 * @param password
 	 */
-	public synchronized void voteSong(final String trackID) {
+	public synchronized void voteSong() {
 		workerHandler.post(new Runnable() {
 			public void run() {
 				try {
-		    		//TODO: check trackId is valid
-		    		ahgdClient.jc.requestVoteOff(trackID);
+		    		String trackID = ahgdClient.jc.getCurrentPlaying().getId();
+		    		ahgdClient.jc.requestVoteOff(trackID); //even if ok, check that the vote flag is now 1
+		    		getPlaylist();
 		    	}
 		    	catch (IllegalArgumentException e) {
 		    		removeActivity();
