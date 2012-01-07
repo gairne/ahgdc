@@ -39,10 +39,10 @@ public class MusicBrowser {
 	private String selectedPath = null;
 	
 	private static final String[] columns = {android.provider.MediaStore.Audio.Media._ID, android.provider.MediaStore.Audio.Media.TITLE, android.provider.MediaStore.Audio.Media.ALBUM, android.provider.MediaStore.Audio.Media.ARTIST};
-	private static final String[] albumOnly = {android.provider.MediaStore.Audio.Media.ALBUM};
-	private static final String[] artistOnly = {android.provider.MediaStore.Audio.Media.ARTIST};
-	private static final String[] titlesOnly = {android.provider.MediaStore.Audio.Media.TITLE};
-	private static final String[] idOnly = {android.provider.MediaStore.Audio.Media._ID};
+	private static final String[] albumOnly = {"album"};//{android.provider.MediaStore.Audio.Media.ALBUM};
+	private static final String[] artistOnly = {"artist"};//{android.provider.MediaStore.Audio.Media.ARTIST};
+	private static final String[] titlesOnly = {"title"};//{android.provider.MediaStore.Audio.Media.TITLE};
+	private static final String[] idOnly = {"_id"};//{android.provider.MediaStore.Audio.Media._ID};
 
 	private ContentResolver cr;
 	
@@ -54,8 +54,8 @@ public class MusicBrowser {
 	{
 		Uri uri = android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
 		if (album != null && artist != null && title != null) {
-			String[] params = {android.provider.MediaStore.Audio.Media.ARTIST, artist, android.provider.MediaStore.Audio.Media.ALBUM, album, android.provider.MediaStore.Audio.Media.TITLE, title};
-			Cursor cursor = cr.query(uri, idOnly, "? = ? AND ? = ? and ? = ?", params, null);
+			String[] params = {artist, album, title};
+			Cursor cursor = cr.query(uri, idOnly, "artist=? AND album=? AND title=?", params, "_id ASC");
 			if (cursor == null) {
 				return 0;
 			}
@@ -63,10 +63,29 @@ public class MusicBrowser {
 				return 0;
 			}
 			else {
-				return cursor.getLong(cursor.getColumnIndex(android.provider.MediaStore.Audio.Media._ID));
+				return cursor.getLong(cursor.getColumnIndex("_id"));
 			}
 		}
 		return 0;
+	}
+	
+	public String getPath(String artist, String album, String title)
+	{
+		Uri uri = android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+		if (album != null && artist != null && title != null) {
+			String[] params = {artist, album, title};
+			Cursor cursor = cr.query(uri, new String[] {"_data"}, "artist=? AND album=? AND title=?", params, "_data ASC");
+			if (cursor == null) {
+				return "";
+			}
+			else if (!cursor.moveToFirst()) {
+				return "";
+			}
+			else {
+				return cursor.getString(cursor.getColumnIndex("_data"));
+			}
+		}
+		return "";
 	}
 	
 	public ArrayList<String> queryMusicAPI(String artist, String album) {
@@ -74,8 +93,9 @@ public class MusicBrowser {
 		Uri uri = android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
 		if (album != null && artist != null) {
 			results.add("..");
-			String[] params = {android.provider.MediaStore.Audio.Media.ARTIST, artist, android.provider.MediaStore.Audio.Media.ALBUM, album};
-			Cursor cursor = cr.query(uri, titlesOnly, "? = ? AND ? = ?", params, null);
+			String[] params = {artist, album};
+			Cursor cursor = cr.query(uri, titlesOnly, "artist=? AND album=?", params, "title ASC");
+			int test = cursor.getCount();
 			if (cursor == null) {
 				return results;
 			}
@@ -84,18 +104,18 @@ public class MusicBrowser {
 			}
 			else {
 				do {
-					String res = cursor.getString(cursor.getColumnIndex(android.provider.MediaStore.Audio.Media.TITLE));
+					String res = cursor.getString(cursor.getColumnIndex("title"));
 					if (!(results.contains(res))) {
 						results.add(res);
 					}
-					results.add(res);
 				} while (cursor.moveToNext());
 			}
 		}
 		else if (artist != null) {
 			results.add("..");
-			String[] params = {android.provider.MediaStore.Audio.Media.ARTIST, artist};
-			Cursor cursor = cr.query(uri, albumOnly, "? = ?", params, null);
+			String[] params = {artist};
+			Cursor cursor = cr.query(uri, albumOnly, "artist=?", params, "album ASC");
+			int test = cursor.getCount();
 			if (cursor == null) {
 				return results;
 			}
@@ -104,16 +124,15 @@ public class MusicBrowser {
 			}
 			else {
 				do {
-					String res = cursor.getString(cursor.getColumnIndex(android.provider.MediaStore.Audio.Media.ALBUM));
+					String res = cursor.getString(cursor.getColumnIndex("album"));
 					if (!(results.contains(res))) {
 						results.add(res);
 					}
-					results.add(res);
 				} while (cursor.moveToNext());
 			}
 		}
 		else {
-			Cursor cursor = cr.query(uri, artistOnly, null, null, null);
+			Cursor cursor = cr.query(uri, artistOnly, null, null, "artist ASC");
 			if (cursor == null) {
 				return results;
 			}
@@ -122,7 +141,7 @@ public class MusicBrowser {
 			}
 			else {
 				do {
-					String res = cursor.getString(cursor.getColumnIndex(android.provider.MediaStore.Audio.Media.ARTIST));
+					String res = cursor.getString(cursor.getColumnIndex("artist"));
 					if (!(results.contains(res))) {
 						results.add(res);
 					}
@@ -157,7 +176,7 @@ public class MusicBrowser {
 				return DIRECTORY;
 			}
 			selectedTitle = clicked;
-			selectedPath = ContentUris.withAppendedId(android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, getID(selectedArtist, selectedAlbum, selectedTitle)).getPath();
+			selectedPath = getPath(selectedArtist, selectedAlbum, selectedTitle); //ContentUris.withAppendedId(android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, getID(selectedArtist, selectedAlbum, selectedTitle)).;
 			return VALID_TO_UPLOAD;
 		}
 		else if (selectedArtist != null) {

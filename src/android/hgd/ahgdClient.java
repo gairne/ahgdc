@@ -130,10 +130,10 @@ public class ahgdClient extends TabActivity implements ThreadListener {
         
         Resources resources = getResources();
         
-        TabHost.TabSpec t_upload = tabs.newTabSpec("filebrowser").setContent(R.id.filebrowser).setIndicator("Upload", resources.getDrawable(R.drawable.upload));
-        TabHost.TabSpec t_playlist = tabs.newTabSpec("playlist").setContent(R.id.playlist).setIndicator("Playlist", resources.getDrawable(R.drawable.playlist));
-        TabHost.TabSpec t_servers = tabs.newTabSpec("servers").setContent(R.id.serversframe).setIndicator("Servers", resources.getDrawable(R.drawable.servers));
-        TabHost.TabSpec t_activities = tabs.newTabSpec("activities").setContent(R.id.activitylist).setIndicator("Active", resources.getDrawable(R.drawable.activities));
+        TabHost.TabSpec t_upload = tabs.newTabSpec("filebrowser").setContent(R.id.filebrowser).setIndicator("Upload", resources.getDrawable(R.drawable.tab_note));
+        TabHost.TabSpec t_playlist = tabs.newTabSpec("playlist").setContent(R.id.playlist).setIndicator("Playlist", resources.getDrawable(R.drawable.tab_playlist));
+        TabHost.TabSpec t_servers = tabs.newTabSpec("servers").setContent(R.id.serversframe).setIndicator("Servers", resources.getDrawable(R.drawable.tab_servers));
+        TabHost.TabSpec t_activities = tabs.newTabSpec("activities").setContent(R.id.activitylist).setIndicator("Active", resources.getDrawable(R.drawable.tab_activities));
         
         tabs.addTab(t_upload);
         tabs.addTab(t_playlist);
@@ -249,7 +249,7 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     	resetSongAdapter();
     	
     	songData = new ArrayList<HashMap<String, String>>();
-    	HashMap<String, String> map;
+    	/*HashMap<String, String> map;
     	
         map = new HashMap<String, String>();
         map.put("title", "Refresh");
@@ -257,7 +257,7 @@ public class ahgdClient extends TabActivity implements ThreadListener {
         map.put("user", "");
         map.put("duration", "");
         map.put("voted", "");
-        songData.add(map);
+        songData.add(map);*/
     	
     	songAdapter = new SimpleAdapter (this.getBaseContext(), songData, R.layout.playlistitem,
                 new String[] {"title", "artist", "user", "duration", "voted"}, new int[] {R.id.title, R.id.artist, R.id.user, R.id.duration, R.id.voted});
