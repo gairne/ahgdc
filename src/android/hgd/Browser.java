@@ -17,43 +17,17 @@
  * along with ahgdc.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+
 package android.hgd;
 
-public class PeriodicThread extends Thread {
+public abstract class Browser {
 
-	private long period;
-	private WorkerThread worker;
+	public static final int NO_ACTION = 0;
+	public static final int VALID_TO_UPLOAD = 1;
+	public static final int DIRECTORY = 2;
 	
-	public PeriodicThread(long period, WorkerThread worker) {
-		this.period = period;
-		this.worker = worker;
-	}
-	
-	public synchronized void setPeriod(long newPeriod) {
-		this.period = newPeriod;
-	}
-	
-	@Override
-	public void run() {
-		while (true) {
-			loop();
-		}
-	}
-	
-	public void loop() {
-		try {
-			while(true) {
-				if (period > 0) {
-					Thread.sleep(period);
-					worker.getPlaylist();
-				}
-				else {
-					Thread.sleep(30000);
-				}
-			}
-		} catch (InterruptedException e) {
-			
-		}
-		
-	}
+	public abstract String[] getFilelist();
+	public abstract void reset();
+	public abstract String getPath();
+	public abstract int update(String itemClicked);
 }

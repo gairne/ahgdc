@@ -49,4 +49,6 @@ public final class ahgdConstants {
 	
 	public static final int SERVER_DETAILS = 1000;
 	public static final String SERVER_DATA = "SERVER_DATA";
+	public static final int UPDATE_SETTINGS = 1001;
+	public static final String UPDATED_SETTINGS = "UPDATED_SETTINGS";
 }

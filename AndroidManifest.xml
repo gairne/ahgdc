@@ -16,8 +16,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".AddServerActivity" android:configChanges="keyboardHidden|orientation">
-        </activity>
-
+        <activity android:name=".AddServerActivity" android:configChanges="keyboardHidden|orientation"></activity>
+		<activity android:name=".PreferencesActivity" android:configChanges="keyboardHidden|orientation"></activity>
     </application>
 </manifest>

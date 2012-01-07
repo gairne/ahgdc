@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<string-array name="browserPreferences">
+		<item>File browser</item>
+		<item>Artist/Album browser</item>
+	</string-array>
+	<string-array name="browserPreferencesValues">
+		<item>File</item>
+		<item>Music</item>
+	</string-array>
+</resources> 

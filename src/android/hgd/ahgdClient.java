@@ -42,6 +42,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.preference.PreferenceManager;
 import android.text.InputType;
 import android.text.method.PasswordTransformationMethod;
 import android.text.method.TransformationMethod;
@@ -92,11 +93,9 @@ public class ahgdClient extends TabActivity implements ThreadListener {
 	
 	//filebrowser
 	private ListView filelist;
-	private FileBrowser f;
+	private Browser browser;
 	private String[] listItems = {};
 	private ArrayAdapter myAdapter; //TODO fix this warning
-	
-	private MusicBrowser music;
 	
 	//playlist
 	private ArrayList<HashMap<String, String>> songData;
@@ -153,7 +152,7 @@ public class ahgdClient extends TabActivity implements ThreadListener {
 			}
         });
         
-        refresher = new PeriodicThread(10000, worker);
+        refresher = new PeriodicThread(new Long(PreferenceManager.getDefaultSharedPreferences(this).getInt("timeout", 10) * 1000), worker);
         refresher.start();
 	}
 	
@@ -259,7 +258,7 @@ public class ahgdClient extends TabActivity implements ThreadListener {
         map.put("voted", "");
         songData.add(map);*/
     	
-    	songAdapter = new SimpleAdapter (this.getBaseContext(), songData, R.layout.playlistitem,
+    	songAdapter = new SimpleAdapter(this.getBaseContext(), songData, R.layout.playlistitem,
                 new String[] {"title", "artist", "user", "duration", "voted"}, new int[] {R.id.title, R.id.artist, R.id.user, R.id.duration, R.id.voted});
         
         songlist.setAdapter(songAdapter);
@@ -298,9 +297,6 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     }
     
     public void init_upload_tab() {
-    	f = new FileBrowser();
-    	music = new MusicBrowser(getContentResolver());
-        
         filelist = (ListView) findViewById(R.id.filebrowser);
         filelist.setOnItemClickListener(new OnItemClickListener() {
         	public void onItemClick(AdapterView parent, View v, int position, long id) {
@@ -308,11 +304,8 @@ public class ahgdClient extends TabActivity implements ThreadListener {
         	}
         });
 		
-        //f.resetPath();
-        listItems = music.getFilelist();
-
+        renewBrowser();
         myAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, listItems);
-        
         filelist.setAdapter(myAdapter);
     }
     
@@ -424,16 +417,32 @@ public class ahgdClient extends TabActivity implements ThreadListener {
         startActivityForResult(myIntent, ahgdConstants.SERVER_DETAILS);
     }
     
+    private void settingsClicked() {
+    	Intent myIntent = new Intent(getApplicationContext(), PreferencesActivity.class);
+        startActivityForResult(myIntent, ahgdConstants.UPDATE_SETTINGS);
+    }
+    
+    private void renewBrowser() {
+    	if (PreferenceManager.getDefaultSharedPreferences(this).getString("browser", "Music").equals("Music")) {
+    		browser = new MusicBrowser(getContentResolver());
+    	}
+    	else {
+    		browser = new FileBrowser();
+    	}
+        browser.reset();
+        listItems = browser.getFilelist();
+    }
+    
     private void filelistClicked(int position) {
-    	int action = music.update(listItems[position]);
-    	if (action == MusicBrowser.NO_ACTION) {
+    	int action = browser.update(listItems[position]);
+    	if (action == Browser.NO_ACTION) {
     		//
     	}
-    	else if (action == MusicBrowser.VALID_TO_UPLOAD) {
-    		worker.uploadFile(music.getPathToFile());
+    	else if (action == Browser.VALID_TO_UPLOAD) {
+    		worker.uploadFile(browser.getPath());
     	}
-    	else if (action == MusicBrowser.DIRECTORY) {
-    		listItems = music.getFilelist();
+    	else if (action == Browser.DIRECTORY) {
+    		listItems = browser.getFilelist();
     		resetFileListAdapter();
     	}
     }
@@ -678,6 +687,17 @@ public class ahgdClient extends TabActivity implements ThreadListener {
             	//Fine
             }
         }
+		else if (requestCode == ahgdConstants.UPDATE_SETTINGS) {
+			//if (resultCode == RESULT_OK) {
+				//Toast.makeText(getApplicationContext(), "Updated settings", Toast.LENGTH_SHORT).show();
+				renewBrowser();
+				resetFileListAdapter();
+				refresher.setPeriod(new Long(PreferenceManager.getDefaultSharedPreferences(this).getInt("timeout", 10) * 1000));
+            //} else if (resultCode == RESULT_CANCELED) {
+            //	Toast.makeText(getApplicationContext(), "Updated settings fail", Toast.LENGTH_SHORT).show();
+			//	
+            //}
+		}
 	}
 	
 	@Override
@@ -694,7 +714,7 @@ public class ahgdClient extends TabActivity implements ThreadListener {
 	        
 	        return true;
 	    case R.id.settings:
-	        
+	        settingsClicked();
 	        return true;
 	    default:
 	        return super.onOptionsItemSelected(item);

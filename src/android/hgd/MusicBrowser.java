@@ -19,26 +19,18 @@
 
 package android.hgd;
 
-import java.io.File;
 import java.util.ArrayList;
 
 import android.content.ContentResolver;
-import android.content.ContentUris;
 import android.database.Cursor;
 import android.net.Uri;
 
-public class MusicBrowser {
-	
-	public static final int NO_ACTION = 0;
-	public static final int VALID_TO_UPLOAD = 1;
-	public static final int DIRECTORY = 2;
-	
+public class MusicBrowser extends Browser {
 	private String selectedArtist = null;
 	private String selectedAlbum = null;
 	private String selectedTitle = null;
 	private String selectedPath = null;
 	
-	private static final String[] columns = {android.provider.MediaStore.Audio.Media._ID, android.provider.MediaStore.Audio.Media.TITLE, android.provider.MediaStore.Audio.Media.ALBUM, android.provider.MediaStore.Audio.Media.ARTIST};
 	private static final String[] albumOnly = {"album"};//{android.provider.MediaStore.Audio.Media.ALBUM};
 	private static final String[] artistOnly = {"artist"};//{android.provider.MediaStore.Audio.Media.ARTIST};
 	private static final String[] titlesOnly = {"title"};//{android.provider.MediaStore.Audio.Media.TITLE};
@@ -164,11 +156,13 @@ public class MusicBrowser {
 	 * 
 	 * @return The contents of the current directory.
 	 */
+	@Override
 	public String[] getFilelist() {
 		ArrayList<String> list = queryMusicAPI(selectedArtist, selectedAlbum);
 		return list.toArray(new String[0]);
 	}
 	//handle .. click
+	@Override
 	public int update(String clicked) {
 		if (selectedAlbum != null && selectedArtist != null) {
 			if (clicked.equals("..")) {
@@ -193,8 +187,16 @@ public class MusicBrowser {
 		}
 	}
 
-	public String getPathToFile() {
+	@Override
+	public String getPath() {
 		//if null, could cause problems
 		return selectedPath;
+	}
+
+	@Override
+	public void reset() {
+		selectedArtist = null;
+		selectedAlbum = null;
+		selectedTitle = null;
 	}
 }
