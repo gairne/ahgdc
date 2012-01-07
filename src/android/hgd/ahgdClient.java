@@ -32,10 +32,13 @@ import java.util.HashMap;
 
 import android.app.AlertDialog;
 import android.app.TabActivity;
+import android.content.ContentResolver;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -92,6 +95,8 @@ public class ahgdClient extends TabActivity implements ThreadListener {
 	private FileBrowser f;
 	private String[] listItems = {};
 	private ArrayAdapter myAdapter; //TODO fix this warning
+	
+	private MusicBrowser music;
 	
 	//playlist
 	private ArrayList<HashMap<String, String>> songData;
@@ -294,6 +299,7 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     
     public void init_upload_tab() {
     	f = new FileBrowser();
+    	music = new MusicBrowser(getContentResolver());
         
         filelist = (ListView) findViewById(R.id.filebrowser);
         filelist.setOnItemClickListener(new OnItemClickListener() {
@@ -302,8 +308,8 @@ public class ahgdClient extends TabActivity implements ThreadListener {
         	}
         });
 		
-        f.resetPath();
-        listItems = f.getFilelist();
+        //f.resetPath();
+        listItems = music.getFilelist();
 
         myAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, listItems);
         
@@ -419,15 +425,15 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     }
     
     private void filelistClicked(int position) {
-    	int action = f.update(listItems[position]);
-    	if (action == FileBrowser.NO_ACTION) {
+    	int action = music.update(listItems[position]);
+    	if (action == MusicBrowser.NO_ACTION) {
     		//
     	}
-    	else if (action == FileBrowser.VALID_TO_UPLOAD) {
-    		worker.uploadFile(f.getPath() + "/" + listItems[position]);
+    	else if (action == MusicBrowser.VALID_TO_UPLOAD) {
+    		worker.uploadFile(music.getPathToFile());
     	}
-    	else if (action == FileBrowser.DIRECTORY) {
-    		listItems = f.getFilelist();
+    	else if (action == MusicBrowser.DIRECTORY) {
+    		listItems = music.getFilelist();
     		resetFileListAdapter();
     	}
     }
