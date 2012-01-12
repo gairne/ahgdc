@@ -710,9 +710,6 @@ public class ahgdClient extends TabActivity implements ThreadListener {
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 	    switch (item.getItemId()) {
-	    case R.id.connect:
-	        
-	        return true;
 	    case R.id.settings:
 	        settingsClicked();
 	        return true;
