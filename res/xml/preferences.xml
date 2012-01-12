@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+	<PreferenceCategory android:title="General">
+		<ListPreference
+			android:key="browser"
+			android:title="Music Browser"
+			android:entries="@array/browserPreferences"
+			android:entryValues="@array/browserPreferencesValues"
+			android:summary="Select how to browse your music"
+		/>
+	</PreferenceCategory>
+	<PreferenceCategory android:title="Playlist">
+		<PreferenceSeekBar
+			android:key="timeout"
+			android:title="Playlist refresh period"
+			android:summary="How often to retrieve the playlist. Set to 0 for never refresh."
+			android:persistent="true"
+		/>
+	</PreferenceCategory>
+</PreferenceScreen>

@@ -46,4 +46,9 @@ public final class ahgdConstants {
 	public static final int THREAD_PLAYLIST_GENFAIL = 30;
 	public static final int THREAD_PLAYLIST_IOFAIL = 31;
 	public static final int THREAD_PLAYLIST_SUCCESS = 32;
+	
+	public static final int SERVER_DETAILS = 1000;
+	public static final String SERVER_DATA = "SERVER_DATA";
+	public static final int UPDATE_SETTINGS = 1001;
+	public static final String UPDATED_SETTINGS = "UPDATED_SETTINGS";
 }

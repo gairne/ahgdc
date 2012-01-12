@@ -21,15 +21,10 @@ package android.hgd;
 
 import java.io.File;
 
-public class FileBrowser
+public class FileBrowser extends Browser
 {
 	private String currentPath = "/";
-	
-	public static final int NO_ACTION = 0;
-	public static final int VALID_TO_UPLOAD = 1;
-	public static final int DIRECTORY = 2;
-	
-	public FileBrowser() {}
+	private String lastClicked;
 	
 	/**
 	 * Return a list of all the files and directories in the current directory (currentPath).
@@ -38,6 +33,7 @@ public class FileBrowser
 	 * 
 	 * @return The contents of the current directory.
 	 */
+	@Override
 	public String[] getFilelist() {
 		File[] files = (new File(currentPath)).listFiles();
 		if (files == null) {
@@ -53,18 +49,21 @@ public class FileBrowser
 		return res;
 	}
 	
-	public void resetPath() {
+	@Override
+	public void reset() {
 		currentPath = "/";
 	}
 	
+	@Override
 	public String getPath() {
-		return currentPath;
+		return lastClicked;
 	}
 	
 	public boolean isValidToUpload(File f) {
 		return (f.canRead() && f.exists() && f.isFile());
 	}
 	
+	@Override
 	public int update(String itemClicked) {
 		String fullPath = currentPath + "/" + itemClicked;
 		if (itemClicked.equals("..")) {
@@ -85,6 +84,7 @@ public class FileBrowser
 			return DIRECTORY;
 		}
 		else if (isValidToUpload(new File(fullPath))) {
+			lastClicked = currentPath + "/" + itemClicked;
 			return VALID_TO_UPLOAD;
 		}
 		return NO_ACTION;

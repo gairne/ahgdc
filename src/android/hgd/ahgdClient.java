@@ -23,22 +23,36 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 import android.app.AlertDialog;
 import android.app.TabActivity;
+import android.content.ContentResolver;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.preference.PreferenceManager;
+import android.text.InputType;
+import android.text.method.PasswordTransformationMethod;
+import android.text.method.TransformationMethod;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.inputmethod.EditorInfo;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemLongClickListener;
@@ -54,6 +68,7 @@ import android.widget.Toast;
 import android.hgd.ahgdConstants;
 
 import jhgdc.library.HGDClient;
+import jhgdc.library.JHGDException;
 import jhgdc.library.Playlist;
 import jhgdc.library.PlaylistItem;
 
@@ -71,13 +86,14 @@ public class ahgdClient extends TabActivity implements ThreadListener {
 	private Handler handler;
 	
 	private WorkerThread worker;
+	private PeriodicThread refresher;
 	
 	//Temporary state variables
 	private String toVoteOff;
 	
 	//filebrowser
 	private ListView filelist;
-	private FileBrowser f;
+	private Browser browser;
 	private String[] listItems = {};
 	private ArrayAdapter myAdapter; //TODO fix this warning
 	
@@ -113,10 +129,10 @@ public class ahgdClient extends TabActivity implements ThreadListener {
         
         Resources resources = getResources();
         
-        TabHost.TabSpec t_upload = tabs.newTabSpec("filebrowser").setContent(R.id.filebrowser).setIndicator("Upload", resources.getDrawable(R.drawable.upload));
-        TabHost.TabSpec t_playlist = tabs.newTabSpec("playlist").setContent(R.id.playlist).setIndicator("Playlist", resources.getDrawable(R.drawable.playlist));
-        TabHost.TabSpec t_servers = tabs.newTabSpec("servers").setContent(R.id.serversframe).setIndicator("Servers", resources.getDrawable(R.drawable.servers));
-        TabHost.TabSpec t_activities = tabs.newTabSpec("activities").setContent(R.id.activitylist).setIndicator("Active", resources.getDrawable(R.drawable.activities));
+        TabHost.TabSpec t_upload = tabs.newTabSpec("filebrowser").setContent(R.id.filebrowser).setIndicator("Upload", resources.getDrawable(R.drawable.tab_note));
+        TabHost.TabSpec t_playlist = tabs.newTabSpec("playlist").setContent(R.id.playlist).setIndicator("Playlist", resources.getDrawable(R.drawable.tab_playlist));
+        TabHost.TabSpec t_servers = tabs.newTabSpec("servers").setContent(R.id.serversframe).setIndicator("Servers", resources.getDrawable(R.drawable.tab_servers));
+        TabHost.TabSpec t_activities = tabs.newTabSpec("activities").setContent(R.id.activitylist).setIndicator("Active", resources.getDrawable(R.drawable.tab_activities));
         
         tabs.addTab(t_upload);
         tabs.addTab(t_playlist);
@@ -127,6 +143,17 @@ public class ahgdClient extends TabActivity implements ThreadListener {
         init_playlist_tab();
         init_servers_tab();
         init_activities_tab();
+        
+        //Playlist listener
+        getTabWidget().getChildAt(1).setOnClickListener(new OnClickListener() {
+			public void onClick(View v) {
+				resetSongAdapter();
+				getTabHost().setCurrentTab(1);
+			}
+        });
+        
+        refresher = new PeriodicThread(new Long(PreferenceManager.getDefaultSharedPreferences(this).getInt("timeout", 10) * 1000), worker);
+        refresher.start();
 	}
 	
 	@Override
@@ -135,6 +162,9 @@ public class ahgdClient extends TabActivity implements ThreadListener {
 	    super.onConfigurationChanged(newConfig);
 	}
 	
+	/**
+	 * Activity has been started - perhaps after having been killed.
+	 */
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -152,6 +182,57 @@ public class ahgdClient extends TabActivity implements ThreadListener {
          */
     }
     
+    /**
+     * Activity has just been started (following onCreate) or has been restarted
+     * having been previously stopped
+     */
+    @Override
+    public void onStart() {
+    	super.onStart();
+    }
+    
+    /**
+     * Activity has just been resumed having been previously paused
+     */
+    @Override
+    public void onResume() {
+    	super.onResume();
+    }
+    
+    /**
+     * Activity has been paused because another activity is in the foreground (has focus)
+     */
+    @Override
+    public void onPause() {
+    	super.onPause();
+    }
+    
+    /**
+     * Activity has been stopped because it is no longer visible
+     */
+    @Override
+    public void onStop() {
+    	super.onStop();
+    }
+    
+    /**
+     * Activity has become visible again after being stopped
+     */
+    @Override
+    public void onRestart() {
+    	super.onRestart();
+    }
+    
+    /**
+     * Activity is about to shut down gracefully - i.e. without being killed for memory.
+     */
+    @Override
+    public void onDestroy() {
+    	super.onDestroy();
+    	
+    	worker.die();
+    }
+    
     //
     // Initialisation of user interface components
     //
@@ -167,7 +248,7 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     	resetSongAdapter();
     	
     	songData = new ArrayList<HashMap<String, String>>();
-    	HashMap<String, String> map;
+    	/*HashMap<String, String> map;
     	
         map = new HashMap<String, String>();
         map.put("title", "Refresh");
@@ -175,9 +256,9 @@ public class ahgdClient extends TabActivity implements ThreadListener {
         map.put("user", "");
         map.put("duration", "");
         map.put("voted", "");
-        songData.add(map);
+        songData.add(map);*/
     	
-    	songAdapter = new SimpleAdapter (this.getBaseContext(), songData, R.layout.playlistitem,
+    	songAdapter = new SimpleAdapter(this.getBaseContext(), songData, R.layout.playlistitem,
                 new String[] {"title", "artist", "user", "duration", "voted"}, new int[] {R.id.title, R.id.artist, R.id.user, R.id.duration, R.id.voted});
         
         songlist.setAdapter(songAdapter);
@@ -216,8 +297,6 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     }
     
     public void init_upload_tab() {
-    	f = new FileBrowser();
-        
         filelist = (ListView) findViewById(R.id.filebrowser);
         filelist.setOnItemClickListener(new OnItemClickListener() {
         	public void onItemClick(AdapterView parent, View v, int position, long id) {
@@ -225,11 +304,8 @@ public class ahgdClient extends TabActivity implements ThreadListener {
         	}
         });
 		
-        f.resetPath();
-        listItems = f.getFilelist();
-
+        renewBrowser();
         myAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, listItems);
-        
         filelist.setAdapter(myAdapter);
     }
     
@@ -240,28 +316,6 @@ public class ahgdClient extends TabActivity implements ThreadListener {
         activitylist.setAdapter(activitiesAdapter);
         
         resetActivityAdapter();
-    	
-    	/*activitylist.setOnItemClickListener(new OnItemClickListener() {
-    		public void onItemClick(AdapterView parent, View v, int position, long id) {
-    			playlistClicked(position);
-    		}
-    	});*/
-    	
-    	//resetSongAdapter();
-    	
-    	/*songData = new ArrayList<HashMap<String, String>>();
-    	HashMap<String, String> map;
-    	
-        map = new HashMap<String, String>();
-        map.put("title", "Refresh");
-        map.put("artist", "");
-        map.put("user", "");
-        songData.add(map);
-    	
-    	songAdapter = new SimpleAdapter (this.getBaseContext(), songData, R.layout.playlistitem,
-                new String[] {"title", "artist", "user"}, new int[] {R.id.title, R.id.artist, R.id.user});
-        
-        songlist.setAdapter(songAdapter);*/
     }
     
     //
@@ -291,17 +345,24 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     //
     
     private void playlistClicked(int position) {
-    	if (songData == null) {
-			resetSongAdapter();
-		}
-		else {
-			if (songData.get(position).get("title").equals("Refresh")) {
-				resetSongAdapter();
+    	AlertDialog.Builder alert = new AlertDialog.Builder(this);
+	    alert.setTitle("Vote off?");
+	    alert.setMessage("Would you like to vote off the current song?");
+	    
+	    alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+			
+			public void onClick(DialogInterface dialog, int which) {
+				vote();
 			}
-			else {
-				//vote();
+		});
+	    
+	    alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+			public void onClick(DialogInterface dialog, int which) {
+				dialog.cancel();
 			}
-		}
+		});
+	    
+	    alert.show();
     }
     
     private void serverlistClicked(final int position) {
@@ -310,6 +371,7 @@ public class ahgdClient extends TabActivity implements ThreadListener {
 	    alert.setMessage("enter password");
 	    
 	    final EditText input = new EditText(this);
+	    input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
 	    alert.setView(input);
 	    
 	    alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
@@ -351,38 +413,36 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     }
     
     private void addServerClicked() {
-    	AlertDialog.Builder alert = new AlertDialog.Builder(this);
-	    alert.setTitle("host");
-	    alert.setMessage("enter user@hostname:port");
-	    
-	    final EditText input = new EditText(this);
-	    alert.setView(input);
-	    
-	    alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-			public void onClick(DialogInterface dialog, int which) {
-				addServer(input.getText().toString());
-			}
-		});
-	    
-	    alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-			public void onClick(DialogInterface dialog, int which) {
-				dialog.cancel();
-			}
-		});
-	    
-	    alert.show();
+    	Intent myIntent = new Intent(getApplicationContext(), AddServerActivity.class);
+        startActivityForResult(myIntent, ahgdConstants.SERVER_DETAILS);
+    }
+    
+    private void settingsClicked() {
+    	Intent myIntent = new Intent(getApplicationContext(), PreferencesActivity.class);
+        startActivityForResult(myIntent, ahgdConstants.UPDATE_SETTINGS);
+    }
+    
+    private void renewBrowser() {
+    	if (PreferenceManager.getDefaultSharedPreferences(this).getString("browser", "Music").equals("Music")) {
+    		browser = new MusicBrowser(getContentResolver());
+    	}
+    	else {
+    		browser = new FileBrowser();
+    	}
+        browser.reset();
+        listItems = browser.getFilelist();
     }
     
     private void filelistClicked(int position) {
-    	int action = f.update(listItems[position]);
-    	if (action == FileBrowser.NO_ACTION) {
+    	int action = browser.update(listItems[position]);
+    	if (action == Browser.NO_ACTION) {
     		//
     	}
-    	else if (action == FileBrowser.VALID_TO_UPLOAD) {
-    		worker.uploadFile(f.getPath() + "/" + listItems[position]);
+    	else if (action == Browser.VALID_TO_UPLOAD) {
+    		worker.uploadFile(browser.getPath());
     	}
-    	else if (action == FileBrowser.DIRECTORY) {
-    		listItems = f.getFilelist();
+    	else if (action == Browser.DIRECTORY) {
+    		listItems = browser.getFilelist();
     		resetFileListAdapter();
     	}
     }
@@ -407,11 +467,7 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     }
     
     private void connectServer(ServerDetails server, String entry) {
-		//active = true;
-    	//connthread = new ConnectionThread(handler, intendedServer, entry);
-    	//connthread.start();
-    	//Toast.makeText(getApplicationContext(), server.getHostname(), Toast.LENGTH_SHORT).show();
-    	worker.connectToServer(server, entry);
+		worker.connectToServer(server, entry);
     }
  
     public void log(String tag, String message) {
@@ -420,123 +476,10 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     
     /**
      * Vote off the current song
-     * 
-     * @return True on success.
      */
-    /*public boolean vote() {
-    	try {
-    		PlaylistItem response = jc.getCurrentPlaying();		
-    		if (!response.isEmpty()) {
-    			AlertDialog.Builder builder = new AlertDialog.Builder(this);
-    			builder.setMessage("Are you sure you want to vote off?")
-    			       .setCancelable(false)
-    			       .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-    			           public void onClick(DialogInterface dialog, int id) {
-    			                vote(toVoteOff);
-    			           }
-    			       })
-    			       .setNegativeButton("No", new DialogInterface.OnClickListener() {
-    			           public void onClick(DialogInterface dialog, int id) {
-    			                dialog.cancel();
-    			           }
-    			       });
-    			AlertDialog alert = builder.create();
-    			alert.show();
-    			return true;
-    		}
-    		else {
-    			Toast.makeText(this.getBaseContext(), R.string.NothingPlaying, Toast.LENGTH_SHORT).show();
-    			return false;
-    		}
-    	}
-    	catch (IllegalArgumentException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.IAE, Toast.LENGTH_SHORT).show();
-    	}
-    	catch (IllegalStateException e) {
-    		if (e.getMessage().equals("Client not connected")) {
-    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT).show();
-    		}
-    		else if (e.getMessage().equals("Client not authenticated")) {
-    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotAuthenticated, Toast.LENGTH_SHORT).show();
-    		}
-    		else {
-    			Toast.makeText(this.getBaseContext(), R.string.Error, Toast.LENGTH_SHORT).show();
-    		}
-    	}
-    	catch (IOException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.IOE, Toast.LENGTH_SHORT).show();
-    	}
-    	catch (JHGDException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT).show();
-    	}
-    	return false;
-    }*/
-    
-    /**
-     * Vote off the song that corresponds to the trackId
-     * 
-     * @return True on success.
-     */
-    /*public boolean vote(String trackId) {
-    	try {
-    		//TODO: check trackId is valid
-    		jc.requestVoteOff(trackId);
-    		return true;
-    	}
-    	catch (IllegalArgumentException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.IAE, Toast.LENGTH_SHORT).show();
-    	}
-    	catch (IllegalStateException e) {
-    		if (e.getMessage().equals("Client not connected")) {
-    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT).show();
-    		}
-    		else if (e.getMessage().equals("Client not authenticated")) {
-    			Toast.makeText(this.getBaseContext(), R.string.ISE_NotAuthenticated, Toast.LENGTH_SHORT).show();
-    		}
-    		else {
-    			Toast.makeText(this.getBaseContext(), R.string.Error, Toast.LENGTH_SHORT).show();
-    		}
-    	}
-    	catch (IOException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.IOE, Toast.LENGTH_SHORT).show();
-    	}
-    	catch (JHGDException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT).show();
-    	}
-    	return false;
-    }*/
-    
-    /**
-     * Return the current Playlist.
-     * 
-     * @return a Playlist object, populated with PlaylistItems.
-     */
-    /*public Playlist getPlaylist() {
-    	try {
-    		return jc.getPlaylist();
-    	}
-    	catch (IllegalArgumentException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.IAE, Toast.LENGTH_SHORT).show();
-    		Log.i("", "IAE");
-    		Toast.makeText(this.getBaseContext(), e.toString(), Toast.LENGTH_SHORT).show();
-    		Log.i("ahgdc", e.toString());
-    	}
-    	catch (IllegalStateException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.ISE_NotConnected, Toast.LENGTH_SHORT).show();
-    		Log.i("", "ISE");
-    	}
-    	catch (IOException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.IOE, Toast.LENGTH_SHORT).show();
-    		Log.i("", "IOE");
-    	}
-    	catch (JHGDException e) {
-    		Toast.makeText(this.getBaseContext(), R.string.JHGDE, Toast.LENGTH_SHORT).show();
-    		Log.i("", "JHGDE");
-    	}
-    	
-    	Log.i("","null here");
-    	return null;
-    }*/
+    public void vote() {
+    	worker.voteSong();
+    }
 
     public String[] convertServers(ArrayList<ServerDetails> arraylist) {
     	String[] toRet = new String[arraylist.size()];
@@ -614,27 +557,9 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     	    		
     	    		if (playlist.isEmpty()) {
     	    			map = new HashMap<String, String>();
-    	                map.put("title", "Refresh");
-    	                map.put("artist", "");
-    	                map.put("user", "");
-    	                map.put("duration", "");
-    	                map.put("voted", "");
-    	                songData.add(map);
-    	    			
-    	    			/*map = new HashMap<String, String>();
-    	                map.put("title", "Nothing playing");
-    	                map.put("artist", "");
-    	                map.put("user", "");
-    	                songData.add(map);*/
     	    		}
     	    		else {
     	    			map = new HashMap<String, String>();
-    	                map.put("title", "Refresh");
-    	                map.put("artist", "");
-    	                map.put("user", "");
-    	                map.put("duration", "");
-    	                map.put("voted", "");
-    	                songData.add(map);
     	    			
     	            	for (PlaylistItem p : playlist) {
     	            		map = new HashMap<String, String>();
@@ -654,12 +579,6 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     	    	}
     	    	catch (NullPointerException e) {
     	    		map = new HashMap<String, String>();
-    	            map.put("title", "Click to refresh");
-    	            map.put("artist", "");
-    	            map.put("user", "");
-    	            map.put("duration", "");
-    	            map.put("voted", "");
-    	            songData.add(map);
     	    	}
     	    	
     	    	songAdapter = new SimpleAdapter (getApplicationContext(), songData, R.layout.playlistitem,
@@ -757,5 +676,45 @@ public class ahgdClient extends TabActivity implements ThreadListener {
 		        activitylist.setAdapter(activitiesAdapter);
 			}
 		});
+	}
+	
+	public void onActivityResult(int requestCode, int resultCode, Intent intent) {
+		if (requestCode == ahgdConstants.SERVER_DETAILS) {
+            if (resultCode == RESULT_OK) {
+                String contents = intent.getStringExtra(ahgdConstants.SERVER_DATA);
+                addServer(contents);
+            } else if (resultCode == RESULT_CANCELED) {
+            	//Fine
+            }
+        }
+		else if (requestCode == ahgdConstants.UPDATE_SETTINGS) {
+			//if (resultCode == RESULT_OK) {
+				//Toast.makeText(getApplicationContext(), "Updated settings", Toast.LENGTH_SHORT).show();
+				renewBrowser();
+				resetFileListAdapter();
+				refresher.setPeriod(new Long(PreferenceManager.getDefaultSharedPreferences(this).getInt("timeout", 10) * 1000));
+            //} else if (resultCode == RESULT_CANCELED) {
+            //	Toast.makeText(getApplicationContext(), "Updated settings fail", Toast.LENGTH_SHORT).show();
+			//	
+            //}
+		}
+	}
+	
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+	    MenuInflater inflater = getMenuInflater();
+	    inflater.inflate(R.menu.mainmenu, menu);
+	    return true;
+	}
+	
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+	    switch (item.getItemId()) {
+	    case R.id.settings:
+	        settingsClicked();
+	        return true;
+	    default:
+	        return super.onOptionsItemSelected(item);
+	    }
 	}
 }
