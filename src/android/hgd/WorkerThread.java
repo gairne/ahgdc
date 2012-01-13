@@ -116,7 +116,7 @@ public class WorkerThread extends Thread {
 				
 				//Connect to new server
 				try {
-		        	ahgdClient.jc.connect(server.getHostname(), Integer.parseInt(server.getPort()));
+		        	ahgdClient.jc.connect(server.getHostname(), Integer.parseInt(server.getPort()), false);
 			    }
 				catch (IOException e) {
 					removeActivity();
@@ -128,6 +128,40 @@ public class WorkerThread extends Thread {
 		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_GENFAIL, e.toString());
 		        	return;
 		        }
+				
+				// -----
+				boolean canEncrypt = true;
+				try {
+		        	ahgdClient.jc.checkServerEncryption();
+		        }
+		        catch (IllegalStateException e) {
+		        	//It's fine.
+		        }
+		        catch (IOException e) {
+		        	canEncrypt = false;
+		        }
+		        catch (JHGDException e) {
+		        	canEncrypt = false;
+		        }
+				
+				//Connect to new server
+				try {
+					if (canEncrypt) {
+						ahgdClient.jc.requestEncryption();
+					}
+			    }
+				catch (IOException e) {
+					removeActivity();
+		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_IOFAIL, e.toString());
+		        	return;
+		        }
+		        catch (JHGDException e) {
+		        	removeActivity();
+		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_GENFAIL, e.toString());
+		        	return;
+		        }
+				
+				// ---
 				
 				//Logging in
 				try {
