@@ -23,36 +23,28 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 
 import android.app.AlertDialog;
 import android.app.TabActivity;
-import android.content.ContentResolver;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.content.res.Resources;
-import android.database.Cursor;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.text.InputType;
-import android.text.method.PasswordTransformationMethod;
-import android.text.method.TransformationMethod;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.view.inputmethod.EditorInfo;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemLongClickListener;
@@ -68,7 +60,6 @@ import android.widget.Toast;
 import android.hgd.ahgdConstants;
 
 import jhgdc.library.HGDClient;
-import jhgdc.library.JHGDException;
 import jhgdc.library.Playlist;
 import jhgdc.library.PlaylistItem;
 
@@ -81,15 +72,13 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     /** Called when the activity is first created. */
 	public static HGDClient jc;
 	
-	public static String SERVER_FILENAME = "hgd_server.config";
+	public static final String SERVER_FILENAME = "hgd_server.config";
+	private String server_filename_abs = SERVER_FILENAME;
 	
 	private Handler handler;
 	
 	private WorkerThread worker;
 	private PeriodicThread refresher;
-	
-	//Temporary state variables
-	private String toVoteOff;
 	
 	//filebrowser
 	private ListView filelist;
@@ -171,9 +160,11 @@ public class ahgdClient extends TabActivity implements ThreadListener {
         
         File root = Environment.getExternalStorageDirectory();
         if (!root.canWrite()){
-        	Toast.makeText(getApplicationContext(), "Cannot write to root", Toast.LENGTH_SHORT).show();
+        	Toast.makeText(getApplicationContext(), "Cannot write to root of sdcard", Toast.LENGTH_SHORT).show();
         }
-        SERVER_FILENAME = (new File(root, SERVER_FILENAME)).getAbsolutePath();
+        if (server_filename_abs.equals(SERVER_FILENAME)) {
+        	server_filename_abs = (new File(root, SERVER_FILENAME)).getAbsolutePath();
+        }
         
         createUI();
         /*

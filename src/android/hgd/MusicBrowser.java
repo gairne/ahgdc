@@ -87,7 +87,6 @@ public class MusicBrowser extends Browser {
 			results.add("..");
 			String[] params = {artist, album};
 			Cursor cursor = cr.query(uri, titlesOnly, "artist=? AND album=?", params, "title ASC");
-			int test = cursor.getCount();
 			if (cursor == null) {
 				return results;
 			}
@@ -107,7 +106,6 @@ public class MusicBrowser extends Browser {
 			results.add("..");
 			String[] params = {artist};
 			Cursor cursor = cr.query(uri, albumOnly, "artist=?", params, "album ASC");
-			int test = cursor.getCount();
 			if (cursor == null) {
 				return results;
 			}

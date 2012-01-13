@@ -23,7 +23,6 @@ import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.preference.PreferenceActivity;
-import android.widget.Toast;
 
 public class PreferencesActivity extends PreferenceActivity {
 	
