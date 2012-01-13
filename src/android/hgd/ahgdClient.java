@@ -482,7 +482,7 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     
     public void writeServerConfig() {
     	try {
-    		FileOutputStream os = new FileOutputStream(new File(SERVER_FILENAME));
+    		FileOutputStream os = new FileOutputStream(new File(server_filename_abs));
     		OutputStreamWriter out = new OutputStreamWriter(os);
     		for (String line : convertServers(servers)) {
     			out.write(line + "\n");
@@ -498,21 +498,21 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     public void readServerConfig() {
     	servers = new ArrayList<ServerDetails>();
     	try {
-    		File input = new File(SERVER_FILENAME);
+    		File input = new File(server_filename_abs);
     		if (!input.exists()) {
-    			Toast.makeText(getApplicationContext(), "File does not exist: " + SERVER_FILENAME, Toast.LENGTH_SHORT).show();
+    			Toast.makeText(getApplicationContext(), "File does not exist: " + server_filename_abs, Toast.LENGTH_SHORT).show();
     			input.createNewFile();
     		}
     		if (!input.canRead()) {
-    			Toast.makeText(getApplicationContext(), "canRead = False: " + SERVER_FILENAME, Toast.LENGTH_SHORT).show();
+    			Toast.makeText(getApplicationContext(), "canRead = False: " + server_filename_abs, Toast.LENGTH_SHORT).show();
     			return;
     		}
     		if (!input.canWrite()) {
-    			Toast.makeText(getApplicationContext(), "canWrite = False: " + SERVER_FILENAME, Toast.LENGTH_SHORT).show();
+    			Toast.makeText(getApplicationContext(), "canWrite = False: " + server_filename_abs, Toast.LENGTH_SHORT).show();
     			return;
     		}
     		if (!input.isFile()) {
-    			Toast.makeText(getApplicationContext(), "Not a file: " + SERVER_FILENAME, Toast.LENGTH_SHORT).show();
+    			Toast.makeText(getApplicationContext(), "Not a file: " + server_filename_abs, Toast.LENGTH_SHORT).show();
     			return;
     		}
     		FileInputStream fis = new FileInputStream(input);
