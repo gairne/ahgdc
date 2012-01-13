@@ -22,6 +22,8 @@ package android.hgd;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
 
 import jhgdc.library.JHGDException;
 import jhgdc.library.Playlist;
@@ -159,7 +161,19 @@ public class WorkerThread extends Thread {
 		        	removeActivity();
 		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_GENFAIL, e.toString());
 		        	return;
-		        }
+		        } catch (KeyManagementException e) {
+					removeActivity();
+		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_GENFAIL, e.toString());
+		        	return;
+				} catch (IllegalArgumentException e) {
+					removeActivity();
+		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_GENFAIL, e.toString());
+		        	return;
+				} catch (NoSuchAlgorithmException e) {
+					removeActivity();
+		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_GENFAIL, e.toString());
+		        	return;
+				}
 				
 				// ---
 				
