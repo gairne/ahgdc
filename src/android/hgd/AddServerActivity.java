@@ -116,6 +116,12 @@ public class AddServerActivity extends Activity {
     
     public void serverbtnClicked(String host, String username, String port) {
     	Intent data = new Intent();
+    	if (host.equals("")) {
+    		host = "127.0.0.1";
+    	}
+    	if (port.equals("")) {
+    		port = "6633";
+    	}
     	data.putExtra(ahgdConstants.SERVER_DATA, username + "@" + host + ":" + port);
     	setResult(RESULT_OK, data);
     	finish();
