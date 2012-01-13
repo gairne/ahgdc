@@ -230,7 +230,7 @@ public class ahgdClient extends TabActivity implements ThreadListener {
     public void onDestroy() {
     	super.onDestroy();
     	
-    	worker.die();
+    	//worker.die();
     }
     
     //
