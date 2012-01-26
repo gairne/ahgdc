@@ -59,7 +59,7 @@ import android.widget.Toast;
 
 import android.hgd.ahgdConstants;
 
-import jhgdc.library.HGDClient;
+import jhgdc.library.HGDClientWrapper;
 import jhgdc.library.Playlist;
 import jhgdc.library.PlaylistItem;
 
@@ -70,7 +70,7 @@ import jhgdc.library.PlaylistItem;
  */
 public class ahgdClient extends TabActivity implements ThreadListener {
     /** Called when the activity is first created. */
-	public static HGDClient jc;
+	public static HGDClientWrapper jc;
 	
 	public static final String SERVER_FILENAME = "hgd_server.config";
 	private String server_filename_abs = SERVER_FILENAME;
@@ -109,7 +109,7 @@ public class ahgdClient extends TabActivity implements ThreadListener {
 	
 	public void createUI() {
 		TabHost tabs = getTabHost();
-        jc = new HGDClient();
+        jc = new HGDClientWrapper();
         handler = new Handler();
         worker = new WorkerThread(this);
         worker.start();

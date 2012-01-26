@@ -27,6 +27,7 @@ import java.security.NoSuchAlgorithmException;
 
 import jhgdc.library.JHGDException;
 import jhgdc.library.Playlist;
+import jhgdc.library.PlaylistItem;
 
 import android.os.Handler;
 import android.os.Looper;
@@ -106,11 +107,13 @@ public class WorkerThread extends Thread {
 		        	//It's fine.
 		        }
 		        catch (IOException e) {
+		        	e.printStackTrace();
 		        	removeActivity();
 		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_IOFAIL, e.toString());
 		        	return;
 		        }
 		        catch (JHGDException e) {
+		        	e.printStackTrace();
 		        	removeActivity();
 		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_GENFAIL, e.toString());
 		        	return;
@@ -118,14 +121,16 @@ public class WorkerThread extends Thread {
 				
 				//Connect to new server
 				try {
-		        	ahgdClient.jc.connect(server.getHostname(), Integer.parseInt(server.getPort()), false);
+		        	ahgdClient.jc.connect(server.getHostname(), Integer.parseInt(server.getPort()));
 			    }
 				catch (IOException e) {
+		        	e.printStackTrace();
 					removeActivity();
 		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_IOFAIL, e.toString());
 		        	return;
 		        }
 		        catch (JHGDException e) {
+		        	e.printStackTrace();
 		        	removeActivity();
 		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_GENFAIL, e.toString());
 		        	return;
@@ -137,13 +142,15 @@ public class WorkerThread extends Thread {
 		        	ahgdClient.jc.checkServerEncryption();
 		        }
 		        catch (IllegalStateException e) {
-		        	//It's fine.
+		        	e.printStackTrace();
 		        }
 		        catch (IOException e) {
 		        	canEncrypt = false;
+		        	e.printStackTrace();
 		        }
 		        catch (JHGDException e) {
 		        	canEncrypt = false;
+		        	e.printStackTrace();
 		        }
 				
 				//Connect to new server
@@ -153,23 +160,28 @@ public class WorkerThread extends Thread {
 					}
 			    }
 				catch (IOException e) {
+					e.printStackTrace();
 					removeActivity();
 		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_IOFAIL, e.toString());
 		        	return;
 		        }
 		        catch (JHGDException e) {
+		        	e.printStackTrace();
 		        	removeActivity();
 		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_GENFAIL, e.toString());
 		        	return;
 		        } catch (KeyManagementException e) {
+		        	e.printStackTrace();
 					removeActivity();
 		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_GENFAIL, e.toString());
 		        	return;
 				} catch (IllegalArgumentException e) {
+					e.printStackTrace();
 					removeActivity();
 		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_GENFAIL, e.toString());
 		        	return;
 				} catch (NoSuchAlgorithmException e) {
+					e.printStackTrace();
 					removeActivity();
 		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_GENFAIL, e.toString());
 		        	return;
@@ -182,11 +194,13 @@ public class WorkerThread extends Thread {
 			    	ahgdClient.jc.login(server.getUser(), password);
 		    	}
 				catch (IOException e) {
+		        	e.printStackTrace();
 					removeActivity();
 		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_PASSWORD_IOFAIL, e.toString());
 		        	return;
 		        }
 		        catch (JHGDException e) {
+		        	e.printStackTrace();
 		        	removeActivity();
 		        	uiThreadCallback.notify(ahgdConstants.THREAD_CONNECTION_PASSWORD_GENFAIL, e.toString());
 		        	return;
@@ -222,11 +236,13 @@ public class WorkerThread extends Thread {
 		    		getPlaylist();
 		    	}
 		    	catch (FileNotFoundException e) {
+		        	e.printStackTrace();
 		    		removeActivity();
 		    		uiThreadCallback.notify(ahgdConstants.THREAD_UPLOAD_FILENOTFOUND, e.toString());
 		    		return;
 		    	}
 		    	catch (IllegalStateException e) {
+		        	e.printStackTrace();
 		    		removeActivity();
 		    		if (e.getMessage().equals("Client not connected")) {
 		        		uiThreadCallback.notify(ahgdConstants.THREAD_UPLOAD_NOTCONNECTED, e.toString());
@@ -242,11 +258,13 @@ public class WorkerThread extends Thread {
 		    		}
 		    	}
 		    	catch (IOException e) {
+		        	e.printStackTrace();
 		    		removeActivity();
 		    		uiThreadCallback.notify(ahgdConstants.THREAD_UPLOAD_IOFAIL, e.toString());
 		    		return;
 		    	}
 		    	catch (JHGDException e) {
+		        	e.printStackTrace();
 		    		removeActivity();
 		    		uiThreadCallback.notify(ahgdConstants.THREAD_UPLOAD_GENFAIL, e.toString());
 		    		return;
@@ -277,21 +295,25 @@ public class WorkerThread extends Thread {
 		    		uiThreadCallback.notifyPlaylist(p);
 		    	}
 		    	catch (IllegalArgumentException e) {
+		        	e.printStackTrace();
 		    		removeActivity();
 		    		uiThreadCallback.notify(ahgdConstants.THREAD_PLAYLIST_GENFAIL, e.toString());
 		    		return;
 		    	}
 		    	catch (IllegalStateException e) {
+		        	e.printStackTrace();
 		    		removeActivity();
 		    		uiThreadCallback.notify(ahgdConstants.THREAD_PLAYLIST_GENFAIL, e.toString());
 			    	return;
 		    	}
 		    	catch (IOException e) {
+		        	e.printStackTrace();
 		    		removeActivity();
 		    		uiThreadCallback.notify(ahgdConstants.THREAD_PLAYLIST_IOFAIL, e.toString());
 		    		return;
 		    	}
 		    	catch (JHGDException e) {
+		        	e.printStackTrace();
 		    		removeActivity();
 		    		uiThreadCallback.notify(ahgdConstants.THREAD_PLAYLIST_GENFAIL, e.toString());
 		    		return;
@@ -314,16 +336,24 @@ public class WorkerThread extends Thread {
 		workerHandler.post(new Runnable() {
 			public void run() {
 				try {
-		    		String trackID = ahgdClient.jc.getCurrentPlaying().getId();
+					PlaylistItem ps = ahgdClient.jc.getCurrentPlaying();
+					if (ps == null) {
+			    		removeActivity();
+			    		uiThreadCallback.notify(ahgdConstants.THREAD_VOTING_GENFAIL, "Not currently playing");
+			    		return;
+					}
+		    		String trackID = ps.getId();
 		    		ahgdClient.jc.requestVoteOff(trackID); //even if ok, check that the vote flag is now 1
 		    		getPlaylist();
 		    	}
 		    	catch (IllegalArgumentException e) {
+		        	e.printStackTrace();
 		    		removeActivity();
 		    		uiThreadCallback.notify(ahgdConstants.THREAD_VOTING_GENFAIL, e.toString());
 		    		return;
 		    	}
 		    	catch (IllegalStateException e) {
+		        	e.printStackTrace();
 		    		removeActivity();
 		    		if (e.getMessage().equals("Client not connected")) {
 		    			uiThreadCallback.notify(ahgdConstants.THREAD_VOTING_NOTCONNECTED, e.toString());
@@ -339,11 +369,13 @@ public class WorkerThread extends Thread {
 		    		}
 		    	}
 		    	catch (IOException e) {
+		        	e.printStackTrace();
 		    		removeActivity();
 		    		uiThreadCallback.notify(ahgdConstants.THREAD_VOTING_IOFAIL, e.toString());
 		    		return;
 		    	}
 		    	catch (JHGDException e) {
+		        	e.printStackTrace();
 		    		removeActivity();
 		    		uiThreadCallback.notify(ahgdConstants.THREAD_VOTING_GENFAIL, e.toString());
 		    		return;
